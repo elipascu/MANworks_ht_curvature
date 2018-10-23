@@ -74,6 +74,62 @@ asm_network_poiseuille
 	assem.assembly(rg);
 }
 
+//! Build the mass and divergence matrices for the 1D Poiseuille's problem for compliant vessels,
+//! @f$ M = \int_{\Lambda} c~u~v~ds @f$ and
+//! @f$ D = \int_{\Lambda} \nabla u \cdot \mathbf{\lambda}\,p~ds @f$
+/*!
+	@param M         Computed mass matrix
+	@param D         Computed divergence matrix
+	@param mim       The integration method to be used
+	@param mf_u      The finite element method for the velocity @f$ \mathbf{u} @f$
+	@param mf_p      The finite element method for the pressure @f$ p @f$
+	@param mf_data   The finite element method for the tangent versor on @f$ \Lambda @f$
+	@param coef      The coefficient for M
+	@param coef      The coefficient for D
+	@param lambdax   First cartesian component of the tangent versor  @f$ \mathbf{\lambda} @f$
+	@param lambday   Second cartesian component of the tangent versor @f$ \mathbf{\lambda} @f$
+	@param lambdaz   Third cartesian component of the tangent versor @f$ \mathbf{\lambda} @f$
+	@param rg        The region where to integrate
+
+	@ingroup asm
+ */
+
+template<typename MAT, typename VEC>
+void
+asm_network_poiseuille_rvar
+(MAT & M, MAT & D,
+	const mesh_im & mim,
+	const mesh_fem & mf_u,
+	const mesh_fem & mf_p,
+	const mesh_fem & mf_data,
+	const VEC & coefM,
+	const VEC & coefD,
+	const VEC & lambdax, const VEC & lambday, const VEC & lambdaz,
+	const mesh_region & rg = mesh_region::all_convexes()
+)
+{
+	GMM_ASSERT1(mf_p.get_qdim() == 1 && mf_u.get_qdim() == 1,
+		"invalid data mesh fem (Qdim=1 required)");
+	// Build the local mass matrix Mvvi
+	getfem::asm_mass_matrix_param(M, mim, mf_u, mf_data, coefM, rg);
+	// Build the local divergence matrix Dvvi
+	generic_assembly
+		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#3);"
+			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#3));"
+			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i);");
+	assem.push_mi(mim);
+	assem.push_mf(mf_u);
+	assem.push_mf(mf_p);
+	assem.push_mf(mf_data);
+	assem.push_data(lambdax);
+	assem.push_data(lambday);
+	assem.push_data(lambdaz);
+	assem.push_data(coefD);
+	assem.push_mat(D);              // output matrix
+	assem.assembly(rg);
+}
+
+
 
 /*! Build the mixed boundary conditions for Poiseuille's problem
     @f$ M=\int_{\mathcal{E}_u} \frac{1}{\beta}\,u\,v~d\sigma@f$ and

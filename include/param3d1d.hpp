@@ -71,6 +71,10 @@ struct param3d1d {
 	vector_type R_;
 	//! Dimensionless radius of the vessel branches (small vector)
 	//GR vector_type Ri_;
+	//! Dimensionless areas of the cross sections
+	vector_type CSarea_;                                             // change eli
+	//! Dimensionless perimeters of the cross sections
+	vector_type CSper_;                                              // change eli
 	//! Dimensionless conductivity of the tissue
 	vector_type kt_;
 	//! Dimensionless conductivity of the vessel wall
@@ -159,6 +163,10 @@ struct param3d1d {
 			std::ifstream ist(RFILE);
 			if (!ist) cerr << "impossible to read from file " << RFILE << endl;
 			import_network_radius(R_, ist, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
+			CSper_.assign(dof_datav, 1);
+			for (auto r : R_) CSper_.emplace_back(2*pi*r);
+			CSarea_.assign(dof_datav, 1);
+			for (auto r : R_) CSarea_.emplace_back(pi*r*r);
 		}
 
 		if(!IMPORT_CURVE){
@@ -308,6 +316,10 @@ struct param3d1d {
 
 	//! Get the radius at a given dof
 	inline scalar_type R  (size_type i) { return R_[i];  } const //! Get the radius at a given branch //GR inline scalar_type Ri  (size_type i) { return Ri_[i];  } const
+	//! Get the Cross Section area at a given dof
+	inline scalar_type CSarea(size_type i) { return CSarea_[i]; } const //change eli
+	//! Get the Cross Section perimeter at a given dof
+	inline scalar_type CSper(size_type i) { return CSper_[i]; } const //change eli
 	//! Get the tissue permeability at a given dof
 	inline scalar_type kt (size_type i) { return kt_[i]; } const
 	//! Get the vessel bed permeability at a given dof
@@ -318,12 +330,24 @@ struct param3d1d {
 	scalar_type R  (const getfem::mesh_im & mim, const size_type rg) { 
 		return compute_radius(mim, mf_datav_, R_, rg); // Ri_[rg]; // compute_radius(mim, mf_datav_, R_, rg);
 	}
+	//! Get the Cross section area at a given mesh_region
+	scalar_type CSarea  (const getfem::mesh_im & mim, const size_type rg) { 
+		return compute_radius(mim, mf_datav_, CSarea_, rg);
+	}
+	//! Get the Cross Section perimeter at a given mesh_region
+	scalar_type CSper  (const getfem::mesh_im & mim, const size_type rg) { 
+		return compute_radius(mim, mf_datav_, CSper_, rg);
+	}
 	//! Get the vessel bed permeability at a given mesh_region
 	scalar_type kv  (const getfem::mesh_im & mim, const size_type rg) { 
 		return compute_radius(mim, mf_datav_, kv_, rg); // kvi_[rg]; // compute_radius(mim, mf_datav_, kv_, rg);
 	}
 	//! Get the radius
 	vector_type & R (void) { return R_; }
+	//! Get the Cross Section area
+	vector_type & CSarea(void) { return CSarea_; }
+	//! Get the Cross Section perimeter
+	vector_type & CSper(void) { return CSper_; }
 	//! Get the vessel wall permeabilities
 	vector_type & Q (void) { return Q_; }
 	//! Get the vessel bed permeabilities

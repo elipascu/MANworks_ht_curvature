@@ -770,9 +770,13 @@ problemHT::solve_fixpoint(void)
 		// Coefficient \pi^2*Ri'^4/\kappa_v
 		vector_type ci(mf_coefvi[i].nb_dof(), pi*pi*Ri*Ri*Ri*Ri/kvi);
 		*/ //o questo?
-		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+		vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+		vector_type ciD(mf_coefvi[i].nb_dof());
 		for(size_type j=0; j<mf_coefvi[i].nb_dof(); ++j){
-			ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri);
+			scalar_type area_el = param.CSarea(shift + j);
+			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri);
+			ciD[j] = area_el;
+			//ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri);
 // 			cout<<" ci"<<ci[j];
 // 			cout<<" Ri"<<Ri;
 // 			cout<<" kvi"<<kvi;
@@ -843,7 +847,23 @@ problemHT::solve_fixpoint(void)
 //4- Iterative Process
 while(RK && iteration < max_iteration)
 	{	
+	// Pulizia della matrice AM
+	/*
+	gmm::clear(gmm::sub_matrix(AM,     //COSì TOLGO SIA Dvv	CHE Jvv
+		gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
+		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )    );
 
+	ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
+	gmm::clear(gmm::sub_matrix(AM,
+		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() ),
+		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() )    ); con questo comando in AM sono rimaste solo Mtt e Dtt
+	creo le sottomatrici da mettere dentro che poi mi devo ricordare di pulire alla fine di ogni iterazione
+	sparse_matrix_type Btt(dof.Pt(), dof.Ut());
+	sparse_matrix_type Bvt(dof.Pv(), dof.Ut());
+	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
+	sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
+	*/
 // a-compute the viscosity in each vessel
 	#ifdef M3D1D_VERBOSE_
 	cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
@@ -915,9 +935,14 @@ while(RK && iteration < max_iteration)
 	#endif
 		scalar_type kvi = param.kv(mimv, i);
 		// Coefficient \pi^2*Ri'^4/\kappa_v
-		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+		vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+		vector_type ciD(mf_coefvi[i].nb_dof());
 		for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
-			{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
+			{
+			scalar_type area_el = param.CSarea(shift + j);
+			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
+			ciD[j] = area_el;
+			//ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 // cout << "-------- ci  "<<ci[j]<< " ";
 // 			cout<<" Ri"<<Ri;
 // 			cout<<" kvi"<<kvi;
@@ -929,15 +954,27 @@ while(RK && iteration < max_iteration)
 		// Allocate temp local matrices
 // cout << "-------- entra Mvv_mui "<< endl;
 		sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
+		sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
 		// Build Mvv_mui
 // cout << "-------- entra netw_pois "<< endl;		
-		asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
+		asm_network_poiseuille_rvar(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, ciD, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
+		//asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
 		// Copy Mvv_mui in Mvv_mu
 		gmm::add(Mvv_mui, 
 			gmm::sub_matrix(Mvv_mu, 
 				gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
-				gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
+				gmm::sub_interval(shift, mf_Uvi[i].nb_dof())));
+		// Add Dvvi to the monolitic matrix
+		gmm::add(gmm::scaled(gmm::transposed(Dvvi), -1.0),
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() + shift, mf_Uvi[i].nb_dof()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
+		gmm::add(Dvvi,
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() + shift, mf_Uvi[i].nb_dof())));
 		gmm::clear(Mvv_mui);
+		gmm::clear(Dvvi);
 	} /* end of branches loop */
 	//Update Mvv and AM matrix
 		gmm::add(Mvv_mu,Mvv_bc,Mvv);

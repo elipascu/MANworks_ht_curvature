@@ -184,11 +184,14 @@ asm_hematocrit_junctions
 			dofu_enum.clear();
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be){
+				// idem qua
 				J(row, i*mf_h[i].nb_dof()+last_) -= pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+last_) += 2*Ri*dim;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
+				//qui devo mettere l'area, che però cambia elemento per elemento, cioè lungo le righe
+				// vorrei recuperare l'area in base al valore della riga
 				J(row, i*mf_h[i].nb_dof()+first_) += pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2*Ri*dim;
 			}

@@ -825,7 +825,7 @@ problemHT::solve_fixpoint(void)
 	gmm::add(ones_H, UM_HT);
 	gmm::scale(UM_HT,H_start);	
 
-		assembly();
+		assembly(); // qui fa Jvv e Jh con assemply_mat
 
 // 3 - Get the initial guess H0
 	#ifdef M3D1D_VERBOSE_

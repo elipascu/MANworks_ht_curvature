@@ -726,7 +726,8 @@ problemHT::solve_fixpoint(void)
 	#ifdef M3D1D_VERBOSE_
 	cout << "Saving the constant matrices ... " << endl;
 	#endif
-	//Extracting matrices Bvt, Bvv
+	//Extracting matrices Bvt, Bvv 
+	/*
 	gmm::copy(gmm::sub_matrix(AM, 
 			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
 			gmm::sub_interval(dof.Ut(), dof.Pt())),
@@ -748,7 +749,10 @@ problemHT::solve_fixpoint(void)
         gmm::scale(DeltaPi,picoef);
        	gmm::mult(Btv,DeltaPi,auxOSt);
         gmm::mult(Bvv,DeltaPi,auxOSv);
-
+	*/
+	sparse_matrix_type Mbar(dof.Pv(), dof.Pt());
+	sparse_matrix_type Mlin(dof.Pv(), dof.Pt());
+	asm_exchange_aux_mat(Mbar, Mlin, mimv, mf_Pt, mf_Pv, param.R(), descr.NInt);
 	//Extracting Mvv_kv
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Mvv0 in FixPoint Hematocrit..." << endl;
@@ -848,22 +852,22 @@ problemHT::solve_fixpoint(void)
 while(RK && iteration < max_iteration)
 	{	
 	// Pulizia della matrice AM
-	
+	/*
 	gmm::clear(gmm::sub_matrix(AM,     //COSì TOLGO SIA Dvv	CHE Jvv
 		gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
 		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )   ) );
-	/*
-	ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
+	*/
+	//ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
 	gmm::clear(gmm::sub_matrix(AM,
 		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() ),
-		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() )    ); con questo comando in AM sono rimaste solo Mtt e Dtt
-	creo le sottomatrici da mettere dentro che poi mi devo ricordare di pulire alla fine di ogni iterazione
+		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() )    )); //con questo comando in AM sono rimaste solo Mtt e Dtt
+	//creo le sottomatrici da mettere dentro che poi mi devo ricordare di pulire alla fine di ogni iterazione
 	sparse_matrix_type Btt(dof.Pt(), dof.Ut());
 	sparse_matrix_type Bvt(dof.Pv(), dof.Ut());
 	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	*/
 	sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
+	
 	
 // a-compute the viscosity in each vessel
 	#ifdef M3D1D_VERBOSE_
@@ -998,7 +1002,32 @@ while(RK && iteration < max_iteration)
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
-
+	bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
+	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, param.Q(),NEWFORM);
+	// Copying Btt
+	gmm::add(Btt, 
+			  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut(), dof.Pt()), 
+					gmm::sub_interval(dof.Ut(), dof.Pt()))); 
+	// Copying -Btv
+	gmm::add(gmm::scaled(Btv, -1),
+	 		  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut(), dof.Pt()),
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()))); 
+	// Copying -Bvt
+	gmm::add(gmm::scaled(Bvt,-1), 
+			  gmm::sub_matrix(AM, 
+			  		gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
+					gmm::sub_interval(dof.Ut(), dof.Pt()))); 
+	// Copying Bvv
+	gmm::add(Bvv, 
+			  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()), 
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
+	gmm::clear(Bvv);
+	gmm::clear(Btv);
+	gmm::clear(Bvt);
+	gmm::clear(Btt);
 //c- add the lymphatic contribution
 	#ifdef M3D1D_VERBOSE_
 	cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;

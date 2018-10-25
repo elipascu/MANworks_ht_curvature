@@ -825,7 +825,7 @@ problemHT::solve_fixpoint(void)
 	gmm::add(ones_H, UM_HT);
 	gmm::scale(UM_HT,H_start);	
 
-		assembly(); // qui fa Jvv e Jh con assemply_mat
+		assembly(); // qui fa Jvv e Jh con assemply_mat ma Jvv non la tiene
 
 // 3 - Get the initial guess H0
 	#ifdef M3D1D_VERBOSE_
@@ -848,11 +848,11 @@ problemHT::solve_fixpoint(void)
 while(RK && iteration < max_iteration)
 	{	
 	// Pulizia della matrice AM
-	/*
+	
 	gmm::clear(gmm::sub_matrix(AM,     //COSì TOLGO SIA Dvv	CHE Jvv
 		gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
-		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )    );
-
+		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )   ) );
+	/*
 	ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
 	gmm::clear(gmm::sub_matrix(AM,
 		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() ),
@@ -862,8 +862,9 @@ while(RK && iteration < max_iteration)
 	sparse_matrix_type Bvt(dof.Pv(), dof.Ut());
 	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
 	*/
+	sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
+	
 // a-compute the viscosity in each vessel
 	#ifdef M3D1D_VERBOSE_
 	cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
@@ -949,7 +950,7 @@ while(RK && iteration < max_iteration)
 // 			cout<<" curv"<<param.Curv(i,j)<<endl;
 // 	cout << "mu_start" << mu_start << endl;
 // cout << "mui[j]" <<mui[j] << endl;
-			}
+		}
 // 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
 		// Allocate temp local matrices
 // cout << "-------- entra Mvv_mui "<< endl;
@@ -976,6 +977,16 @@ while(RK && iteration < max_iteration)
 		gmm::clear(Mvv_mui);
 		gmm::clear(Dvvi);
 	} /* end of branches loop */
+	// add Jvv to the monolitic matrix
+	asm_network_junctions(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.R());
+	gmm::add(Jvv,
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv())));
+	gmm::add(gmm::scaled(gmm::transposed(Jvv), -1.0),
+		gmm::sub_matrix(AM,
+			 gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
+			 gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
 	//Update Mvv and AM matrix
 		gmm::add(Mvv_mu,Mvv_bc,Mvv);
 		gmm::clear(gmm::sub_matrix(AM, 

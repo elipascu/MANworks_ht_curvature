@@ -694,9 +694,11 @@ problemHT::solve_fixpoint(void)
 	clock_t time_G;
 	vector_type F_LF; gmm::resize(F_LF, dof.Pt());
 	vector_type Uphi(dof.Pv()); 
-	sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
-	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	//sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
+	//sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
+	//sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	vector_type Q_rvar=param.Q(); gmm::clear(Q_rvar);
+	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -947,6 +949,9 @@ while(RK && iteration < max_iteration)
 			scalar_type area_el = param.CSarea(shift + j);
 			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
 			ciD[j] = area_el;
+			// già che ci sono mi creo il vettore le matrici B, che usano il perimetro
+			scalar_type per_el = param.CSarea(shift +j);
+			Q_rvar.emplace_back(per_el * Lp);
 			//ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 // cout << "-------- ci  "<<ci[j]<< " ";
 // 			cout<<" Ri"<<Ri;
@@ -1002,8 +1007,10 @@ while(RK && iteration < max_iteration)
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
+
+	// aggiornamento matrici B
 	bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
-	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, param.Q(),NEWFORM);
+	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar,NEWFORM);
 	// Copying Btt
 	gmm::add(Btt, 
 			  gmm::sub_matrix(AM, 
@@ -1024,6 +1031,7 @@ while(RK && iteration < max_iteration)
 			  gmm::sub_matrix(AM, 
 					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()), 
 					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
+	gmm::clear(Q_rvar);
 	gmm::clear(Bvv);
 	gmm::clear(Btv);
 	gmm::clear(Bvt);

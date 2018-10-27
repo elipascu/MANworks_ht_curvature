@@ -79,6 +79,7 @@ compute_radius
 	 const mesh_fem & mf_coef,
 	 const VEC & R,
 	 const size_type & rg
+         // size_type inx
 	 ) 
 {
 	/*vector_type dof_enum;
@@ -91,7 +92,7 @@ compute_radius
 	}
 	size_type first_=dof_enum[0];
 	return R[first_];*/
-
+ 	// R_[mf_coef.ind_basic_dof_of_element(idx)]
 	//Luca
         getfem::generic_assembly assem;
         assem.set("u=data(#1); V()+=u(i).comp(Base(#1))(i)");
@@ -117,6 +118,7 @@ compute_radius
 	//cout << "Size: " << rg_size << endl << "h: " << measure[0]/rg_size << endl;
         return v[0]/measure[0];
 }
+
 
 template
 <typename VEC>

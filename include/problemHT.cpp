@@ -1036,6 +1036,16 @@ while(RK && iteration < max_iteration)
 	gmm::clear(Btv);
 	gmm::clear(Bvt);
 	gmm::clear(Btt);
+
+	// devo aggiornare anche il vettorone F, di cui cambiano BttDeltaPi, Fv e BvvDeltaPi
+	// modifico F_new o FM?
+
+
+
+
+
+
+
 //c- add the lymphatic contribution
 	#ifdef M3D1D_VERBOSE_
 	cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;

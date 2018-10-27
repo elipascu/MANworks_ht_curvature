@@ -837,7 +837,7 @@ problem3d1d::assembly_rhs(void)
 	}
 	
 	
-	if (PARAM.int_value("TEST_RHS")) {
+	if (PARAM.int_value("TEST_RHS")) { // non lo fa
 		#ifdef M3D1D_VERBOSE_
 		cout << "  ... as the divergence of exact velocity ... " << endl;
 		#endif
@@ -845,7 +845,7 @@ problem3d1d::assembly_rhs(void)
 	}
 	else {
 		sparse_matrix_type Mtt(dof.Ut(), dof.Ut());
-		asm_tissue_bc(Mtt, Ft, mimt, mf_Ut, mf_coeft, BCt, P0, beta);
+		asm_tissue_bc(Mtt, Ft, mimt, mf_Ut, mf_coeft, BCt, P0, beta);  //Mtt serve solo per mix conditions
 		gmm::add(Mtt, 
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(0, dof.Ut()),

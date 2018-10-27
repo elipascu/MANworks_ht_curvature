@@ -49,7 +49,9 @@ int main(int argc, char *argv[])
 				{
 				if (!p.problem3d1d::solve()) GMM_ASSERT1(false, "solve procedure has failed");
 				p.init(argc, argv);
-				if (!p.solve_fixpoint()) GMM_ASSERT1(false, "solve procedure has failed");			
+				if (!p.solve_fixpoint()){ GMM_ASSERT1(false, "solve procedure has failed");			
+std::cout << "faccio solve_fixpoint   " << endl; }
+
 		// Save results in .vtk format
 		p.export_vtk();
 }

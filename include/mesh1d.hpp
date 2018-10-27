@@ -334,11 +334,18 @@ import_network_radius
 	// Assemble the POdisc radius
 	gmm::resize(Radius, mf_data.nb_dof()); 
 	gmm::clear(Radius);
-	for (size_type b=0; b<nb_branches; ++b)
-		for (getfem::mr_visitor mrv(mf_data.linked_mesh().region(b)); !mrv.finished(); ++mrv)
+	for (size_type b = 0; b < nb_branches; ++b) {
+		for (getfem::mr_visitor mrv(mf_data.linked_mesh().region(b)); !mrv.finished(); ++mrv) {
 			for (auto i : mf_data.ind_basic_dof_of_element(mrv.cv()))
+			{
 				Radius[i] = Rdata[b];
-cout<<" i Radius    "<< mf_data.ind_basic_dof_of_element(mrv.cv())<<endl;
+
+ 
+				std::cout << "i   " << i <<"    radius    "<<Radius[i]<< endl;
+			}
+		}
+	}
+
 	/*for (auto r:Rdata)
 		Radius_i.emplace_back(r);GR*/
 }

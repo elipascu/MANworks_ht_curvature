@@ -645,6 +645,7 @@ problemHT::calcolo_Rk(vector_type U_N, vector_type U_O){
 bool
 problemHT::solve_fixpoint(void)
 {
+
 /*solver 
 1- Declaration of variables
 2- Save the constant matrices (that don't change during the iterative process)
@@ -948,6 +949,7 @@ while(RK && iteration < max_iteration)
 			{
 			scalar_type area_el = param.CSarea(shift + j);
 			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
+cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 			ciD[j] = area_el;
 			// già che ci sono mi creo il vettore le matrici B, che usano il perimetro
 			scalar_type per_el = param.CSarea(shift +j);

@@ -694,9 +694,11 @@ problemHT::solve_fixpoint(void)
 	clock_t time_G;
 	vector_type F_LF; gmm::resize(F_LF, dof.Pt());
 	vector_type Uphi(dof.Pv()); 
-	sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
-	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	//sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
+	//sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
+	//sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	vector_type Q_rvar=param.Q(); gmm::clear(Q_rvar);
+	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -726,7 +728,8 @@ problemHT::solve_fixpoint(void)
 	#ifdef M3D1D_VERBOSE_
 	cout << "Saving the constant matrices ... " << endl;
 	#endif
-	//Extracting matrices Bvt, Bvv
+	//Extracting matrices Bvt, Bvv 
+	/*
 	gmm::copy(gmm::sub_matrix(AM, 
 			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
 			gmm::sub_interval(dof.Ut(), dof.Pt())),
@@ -748,7 +751,10 @@ problemHT::solve_fixpoint(void)
         gmm::scale(DeltaPi,picoef);
        	gmm::mult(Btv,DeltaPi,auxOSt);
         gmm::mult(Bvv,DeltaPi,auxOSv);
-
+	*/
+	sparse_matrix_type Mbar(dof.Pv(), dof.Pt());
+	sparse_matrix_type Mlin(dof.Pv(), dof.Pt());
+	asm_exchange_aux_mat(Mbar, Mlin, mimv, mf_Pt, mf_Pv, param.R(), descr.NInt);
 	//Extracting Mvv_kv
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Mvv0 in FixPoint Hematocrit..." << endl;
@@ -825,7 +831,7 @@ problemHT::solve_fixpoint(void)
 	gmm::add(ones_H, UM_HT);
 	gmm::scale(UM_HT,H_start);	
 
-		assembly(); // qui fa Jvv e Jh con assemply_mat
+		assembly(); // qui fa Jvv e Jh con assemply_mat ma Jvv non la tiene
 
 // 3 - Get the initial guess H0
 	#ifdef M3D1D_VERBOSE_
@@ -851,19 +857,20 @@ while(RK && iteration < max_iteration)
 	/*
 	gmm::clear(gmm::sub_matrix(AM,     //COSì TOLGO SIA Dvv	CHE Jvv
 		gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
-		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )    );
-
-	ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
+		gmm::sub_interval(dof.Ut() + dof.Pt(),            dof.Uv() )   ) );
+	*/
+	//ALTRIMENTI PULISCO TUTTO CIò CHE CONTIENE IL RAGGIO
 	gmm::clear(gmm::sub_matrix(AM,
 		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() ),
-		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() )    ); con questo comando in AM sono rimaste solo Mtt e Dtt
-	creo le sottomatrici da mettere dentro che poi mi devo ricordare di pulire alla fine di ogni iterazione
+		gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv() )    )); //con questo comando in AM sono rimaste solo Mtt e Dtt
+	//creo le sottomatrici da mettere dentro che poi mi devo ricordare di pulire alla fine di ogni iterazione
 	sparse_matrix_type Btt(dof.Pt(), dof.Ut());
 	sparse_matrix_type Bvt(dof.Pv(), dof.Ut());
 	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 	sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
-	*/
+	
+	
 // a-compute the viscosity in each vessel
 	#ifdef M3D1D_VERBOSE_
 	cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
@@ -942,6 +949,9 @@ while(RK && iteration < max_iteration)
 			scalar_type area_el = param.CSarea(shift + j);
 			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
 			ciD[j] = area_el;
+			// già che ci sono mi creo il vettore le matrici B, che usano il perimetro
+			scalar_type per_el = param.CSarea(shift +j);
+			Q_rvar.emplace_back(per_el * Lp);
 			//ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 // cout << "-------- ci  "<<ci[j]<< " ";
 // 			cout<<" Ri"<<Ri;
@@ -949,7 +959,7 @@ while(RK && iteration < max_iteration)
 // 			cout<<" curv"<<param.Curv(i,j)<<endl;
 // 	cout << "mu_start" << mu_start << endl;
 // cout << "mui[j]" <<mui[j] << endl;
-			}
+		}
 // 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
 		// Allocate temp local matrices
 // cout << "-------- entra Mvv_mui "<< endl;
@@ -976,6 +986,16 @@ while(RK && iteration < max_iteration)
 		gmm::clear(Mvv_mui);
 		gmm::clear(Dvvi);
 	} /* end of branches loop */
+	// add Jvv to the monolitic matrix
+	asm_network_junctions(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.R());
+	gmm::add(Jvv,
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv())));
+	gmm::add(gmm::scaled(gmm::transposed(Jvv), -1.0),
+		gmm::sub_matrix(AM,
+			 gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
+			 gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
 	//Update Mvv and AM matrix
 		gmm::add(Mvv_mu,Mvv_bc,Mvv);
 		gmm::clear(gmm::sub_matrix(AM, 
@@ -987,6 +1007,44 @@ while(RK && iteration < max_iteration)
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
+
+	// aggiornamento matrici B
+	bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
+	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar,NEWFORM);
+	// Copying Btt
+	gmm::add(Btt, 
+			  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut(), dof.Pt()), 
+					gmm::sub_interval(dof.Ut(), dof.Pt()))); 
+	// Copying -Btv
+	gmm::add(gmm::scaled(Btv, -1),
+	 		  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut(), dof.Pt()),
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()))); 
+	// Copying -Bvt
+	gmm::add(gmm::scaled(Bvt,-1), 
+			  gmm::sub_matrix(AM, 
+			  		gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
+					gmm::sub_interval(dof.Ut(), dof.Pt()))); 
+	// Copying Bvv
+	gmm::add(Bvv, 
+			  gmm::sub_matrix(AM, 
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()), 
+					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
+	gmm::clear(Q_rvar);
+	gmm::clear(Bvv);
+	gmm::clear(Btv);
+	gmm::clear(Bvt);
+	gmm::clear(Btt);
+
+	// devo aggiornare anche il vettorone F, di cui cambiano BttDeltaPi, Fv e BvvDeltaPi
+	// modifico F_new o FM?
+
+
+
+
+
+
 
 //c- add the lymphatic contribution
 	#ifdef M3D1D_VERBOSE_

@@ -173,10 +173,9 @@ asm_network_bc
 			// Add gv contribution to Fv
 			cout << "BC[bc].idx        " << BC[bc].idx << endl;
 			cout << "dim R " << R.size() << endl;
-                        cout << "dim mesh "<< mf_data.linked_mesh().convex_index ().size()<<std::endl;
-     
-                         cout << "dim mesh points "<< mf_data.linked_mesh().nb_points()<<std::endl;
-			cout << "mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]           " << mf_data.ind_basic_dof_of_element(BC[bc].idx)[0] << endl;
+            cout << "dim mesh "<< mf_data.linked_mesh().convex_index().size()<<std::endl;
+			cout << "dim mesh points "<< mf_data.linked_mesh().nb_points()<<std::endl;
+			//cout << "mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]           " << mf_data.ind_basic_dof_of_element(BC[bc].idx)[0] << endl;
 			
 			scalar_type Rbc = compute_radius(mim, mf_data, R, i);//R[mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]];
 			scalar_type BCVal = BC[bc].value*pi*Rbc*Rbc;

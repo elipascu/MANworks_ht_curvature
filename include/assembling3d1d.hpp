@@ -142,6 +142,10 @@ asm_exchange_mat
 	#ifdef M3D1D_VERBOSE_
 	cout << "    Assembling Bvt ..." << endl;
 	#endif
+	/*for (size_type k=0; k<Q.size() ; k++){
+		cout << " Q["<< k << "] = "<< Q[k] << endl;
+		}
+	*/
 	gmm::mult(Bvv, Mbar, Bvt);
 	if (ALT_FORM){
 		#ifdef M3D1D_VERBOSE_

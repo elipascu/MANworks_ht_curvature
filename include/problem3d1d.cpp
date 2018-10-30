@@ -967,6 +967,8 @@ problem3d1d::solve(void)
 	gmm::csc_matrix<scalar_type> A;
 	gmm::clean(AM, 1E-12);
 	gmm::copy(AM, A);
+	
+	cout << "entro in problem3d1d::solve " << endl;
 
 	//gmm::clear(AM); // to be postponed for preconditioner
 	double time = gmm::uclock_sec();
@@ -1947,7 +1949,7 @@ while(RK && iteration < max_iteration)
 		if(RK && iteration < max_iteration && print_res && (iteration % iteration_save) == 0)
 				{
 				export_vtk();
-				cout << "Solution at iteration " << iteration+1 << " saved" << endl;
+				cout << "Solution at iteration prrr " << iteration+1 << " saved" << endl;
                                 cout << "TFR                 = " << TFR << endl;
 				cout << "Lymphatic Flow Rate = " << FRlymph << endl;
 				cout << "Flow Rate of cube   = " << FRCube << endl;

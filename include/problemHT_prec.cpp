@@ -970,6 +970,7 @@ problemHT::solve_fixpoint(void)
 			#endif
 			scalar_type kvi = param.kv(mimv, i);
 			// Coefficient \pi^2*Ri'^4/\kappa_v
+			vector_type ci(mf_coefvi[i].nb_dof());
 			vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 			vector_type ciD(mf_coefvi[i].nb_dof());
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
@@ -984,15 +985,15 @@ problemHT::solve_fixpoint(void)
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
 			}
-			/*for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
-				{ciM[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
+			for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
+				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 				// cout << "-------- ci  "<<ci[j]<< " ";
 				// 			cout<<" Ri"<<Ri;
 				// 			cout<<" kvi"<<kvi;
 				// 			cout<<" curv"<<param.Curv(i,j)<<endl;
 				// 	cout << "mu_start" << mu_start << endl;
 				// cout << "mui[j]" <<mui[j] << endl;
-			}*/
+			}
 			
 
 			// Allocate temp local matrices
@@ -1003,7 +1004,7 @@ problemHT::solve_fixpoint(void)
 			// cout << "-------- entra netw_pois "<< endl;
 			//asm_network_poiseuille(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));	
 			//gmm::clear(Mvv_mui);
-			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ciM, meshv.region(i));
+			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
 			// Copy Mvv_mui in Mvv_mu
 			gmm::add(Mvv_mui, 
 				gmm::sub_matrix(Mvv_mu, 
@@ -1013,7 +1014,7 @@ problemHT::solve_fixpoint(void)
 			gmm::clear(Dvvi);
 		
 		} /* end of branches loop */
-		for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
+		//for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
 		cout << " errore 1 "<< endl;
 		//Update Mvv and AM matrix
 		gmm::add(Mvv_mu,Mvv_bc,Mvv);

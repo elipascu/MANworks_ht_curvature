@@ -17,7 +17,6 @@
 #include <problemHT.hpp>
 #include <cmath>
 
-
 namespace getfem {
 
 /////////// Initialize the problem ///////////////////////////////////// 

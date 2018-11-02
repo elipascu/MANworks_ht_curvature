@@ -982,7 +982,7 @@ problemHT::solve_fixpoint(void)
 					ciD[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el;
 					ciM[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*Ri*Ri) / mu_start * mui[indcv_loc];
 					Q_rvar[j] = per_el * Lp *P_ /U_;
-					cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
+				       //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
 			}
@@ -991,13 +991,11 @@ problemHT::solve_fixpoint(void)
 				// cout << "-------- ci  "<<ci[j]<< " ";
 				// 			cout<<" Ri"<<Ri;
 				// 			cout<<" kvi"<<kvi;
-		 			cout<<" ci  curv"<<param.Curv(i,j)<<endl;
+		 		//		cout<<" ci  curv"<<param.Curv(i,j)<<endl;
 				// 	cout << "mu_start" << mu_start << endl;
 				// cout << "mui[j]" <<mui[j] << endl;
 			}
 		
-                        for(size_type j=0; j< mf_coefvi[i].nb_dof(); j++ ){ 
-				cout<< " ci[j]  = " << ci[j]<< ",        ciM[j]   "<<ciM[j]<<endl;}	
 
 			// Allocate temp local matrices
 			// cout << "-------- entra Mvv_mui "<< endl;
@@ -1005,9 +1003,9 @@ problemHT::solve_fixpoint(void)
 			sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
 			// Build Mvv_mui
 			// cout << "-------- entra netw_pois "<< endl;
-			//asm_network_poiseuille(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));	
+			asm_network_poiseuille_rvar(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, ciD, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));	
 			//gmm::clear(Mvv_mui);
-			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ciM, meshv.region(i));
+			//asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ciM, meshv.region(i));
 			// Copy Mvv_mui in Mvv_mu
 			gmm::add(Mvv_mui, 
 				gmm::sub_matrix(Mvv_mu, 

@@ -1,0 +1,49 @@
+void
+vessel_conductivity(
+					// puntatore a sigma, area_el, per_el e R dell'elemento da aggiornare
+					scalar_type Ru
+					scalar_type hu
+					scalar_type p_int
+					scalar_type p_ext )
+{
+
+// leggere nu e E da file input.param
+scalar_type ratio = hu/Ru;
+scalar_type deltap = p_ext-p_int;
+
+if (ratio > 0.1){ // arteria
+	scalar_type den = (Ru+hu)*(Ru+hu) - Ru*Ru;
+	scalar_type B1 = (p_int *Ru*Ru - p_ext*(Ru+hu)*(Ru+hu))/den;
+	scalar_type B2 = deltap * Ru*Ru*(Ru+hu) /den;
+	R = Ru*(1+ (1-nu)/E *B1 - (1+nu)/E *B2 /Ru /Ru);
+	area = pi*R*R;
+	per = 2*pi*R;
+	~ w = (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) /kvi;
+	// aggiorno R, area, perimetro
+	// calcolo coefficiente conduttività
+	}
+else {
+	scalar_type threshold;
+	threshold = 3 *E *ratio*ratio*ratio /12 /(1-nu*nu);
+	scalar_type Rtmp = Ru *(1 - Ru * (1-nu*nu) /ratio /E *deltap );
+	if(!(deltap > threshold)){
+		R = Rtmp;
+		area = pi*R*R;
+		per = 2*pi*R;
+		~ w = (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) /kvi;
+		// aggiorno area, perimetro e calcolo coefficiente conduttività
+	}
+	else{
+		scalar_type p_adim = deltap *12 *(1-nu*nu) /E /ratio /ratio /ratio;
+		int_u_star = 69.56 * exp(-1.74 * p_adim);
+		area = 15.95 * exp(-0.545 * p_adim);
+		per = 2* pi * Rtmp;
+		R = area_el /per_el;  //hydraulic radius
+		// SIGMA.
+		// la chiamo w?
+	}
+	
+}
+
+
+}

@@ -180,7 +180,8 @@ asm_network_bc
 			// cout << "mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]           " << mf_data.ind_basic_dof_of_element(BC[bc].idx)[0] << endl;
 
 
-
+			//region(i).convex_to_point per prendere il convesso dal punto
+			//	dal convessso al ramo, siccome devo prendere il dof, passo da basic_dof_of_element
 
 
 			

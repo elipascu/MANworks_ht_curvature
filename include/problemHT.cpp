@@ -645,7 +645,7 @@ problemHT::calcolo_Rk(vector_type U_N, vector_type U_O){
 bool
 problemHT::solve_fixpoint(void)
 {
-
+cout << "ciao bell!   "<< endl;
 /*solver 
 1- Declaration of variables
 2- Save the constant matrices (that don't change during the iterative process)
@@ -988,6 +988,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 		gmm::clear(Mvv_mui);
 		gmm::clear(Dvvi);
 	} /* end of branches loop */
+
 	// add Jvv to the monolitic matrix
 	asm_network_junctions(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.R());
 	gmm::add(Jvv,
@@ -1012,7 +1013,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 
 	// aggiornamento matrici B
 	bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
-	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar,NEWFORM);
+	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar, NEWFORM);
 	// Copying Btt
 	gmm::add(Btt, 
 			  gmm::sub_matrix(AM, 

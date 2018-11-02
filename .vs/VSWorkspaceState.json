@@ -1,7 +1,10 @@
 {
   "ExpandedNodes": [
     "",
-    "\\include"
+    "\\include",
+    "\\src",
+    "\\src\\2_bifurcation"
   ],
+  "SelectedNode": "\\include\\problemHT.cpp",
   "PreviewInSolutionExplorer": false
 }

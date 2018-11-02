@@ -17,8 +17,6 @@
 #include <problemHT.hpp>
 #include <cmath>
 
-
-
 namespace getfem {
 
 /////////// Initialize the problem ///////////////////////////////////// 
@@ -645,7 +643,6 @@ problemHT::calcolo_Rk(vector_type U_N, vector_type U_O){
 bool
 problemHT::solve_fixpoint(void)
 {
-cout << "ciao bell!   "<< endl;
 /*solver 
 1- Declaration of variables
 2- Save the constant matrices (that don't change during the iterative process)
@@ -698,8 +695,10 @@ cout << "ciao bell!   "<< endl;
 	//sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
 	//sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 	//sparse_matrix_type Btv(dof.Pt(), dof.Pv());
-	vector_type Q_rvar=param.Q(); gmm::clear(Q_rvar);
+	vector_type Q_rvar(mf_coefv.nb_dof()); //=param.Q(); gmm::clear(Q_rvar);
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
+	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
+	scalar_type U_  = PARAM.real_value("U", "characteristic flow speed in the capillary bed [m/s]");
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -729,6 +728,8 @@ cout << "ciao bell!   "<< endl;
 	#ifdef M3D1D_VERBOSE_
 	cout << "Saving the constant matrices ... " << endl;
 	#endif
+
+	cout << " sono nel problemHT.solve_fixpoint " << endl;
 	//Extracting matrices Bvt, Bvv 
 	/*
 	gmm::copy(gmm::sub_matrix(AM, 
@@ -932,10 +933,10 @@ while(RK && iteration < max_iteration)
 // cout << "-------- end switch " << endl;
 			size_type pos=0;
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
-			for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
-				{
-				MU[muu] = mui[pos];
-				pos++;}
+				for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
+					{
+					MU[muu] = mui[pos];
+					pos++;}
 
 //b-modify the mass matrix for fluid dynamic problem
 	#ifdef M3D1D_VERBOSE_
@@ -945,15 +946,31 @@ while(RK && iteration < max_iteration)
 		// Coefficient \pi^2*Ri'^4/\kappa_v
 		vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 		vector_type ciD(mf_coefvi[i].nb_dof());
+		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+			for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+			scalar_type area_el = param.CSarea(j);
+			scalar_type per_el = param.CSper(j);
+			// works only for P0 coefficients
+			ciM[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
+			ciD[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el;
+			Q_rvar[j] = per_el * Lp *P_ /U_;
+			//cout << "area_el   "<< area_el << "    ramo  " << i << endl;
+			//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
+			}
+		}
+
+
+		/*
 		for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
 			{
-			scalar_type area_el = param.CSarea(shift + j);
+			scalar_type area_el = param.CSarea(shift_coef + j);
 			ciM[j] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
-cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
+			//cout << "area_el   "<< area_el << "ramo  " << i << endl;
 			ciD[j] = area_el;
 			// già che ci sono mi creo il vettore le matrici B, che usano il perimetro
-			scalar_type per_el = param.CSarea(shift +j);
-			Q_rvar.emplace_back(per_el * Lp);
+			scalar_type per_el = param.CSarea(shift_coef +j);
+			Q_rvar[shift_coef + j]=per_el * Lp;
+			//cout << " Q_rvar["<<shift_coef+j<<"] = "<< Q_rvar[shift_coef+j]<<endl;
 			//ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 // cout << "-------- ci  "<<ci[j]<< " ";
 // 			cout<<" Ri"<<Ri;
@@ -962,6 +979,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 // 	cout << "mu_start" << mu_start << endl;
 // cout << "mui[j]" <<mui[j] << endl;
 		}
+		*/
 // 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
 		// Allocate temp local matrices
 // cout << "-------- entra Mvv_mui "<< endl;
@@ -1010,10 +1028,17 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
-
+	//cout << " dimensione Q   " << param.Q().size() << endl << " dimensione Q_rvar   "<< Q_rvar.size() << endl;
+	/*for (size_type k=0; k<Q_rvar.size() ; k++){
+		cout << " Q["<< k << "] = "<<param.Q(k)<< "  ,    Q_rvar["<< k <<"] =  "<< Q_rvar[k] <<endl;
+		}
+	*/
 	// aggiornamento matrici B
 	bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
-	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar, NEWFORM);
+	vector_type qprova = param.Q();
+	vector_type & qprova2 = qprova;
+	asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, qprova2, NEWFORM);
+	cout << " errore 1 "<< endl;
 	// Copying Btt
 	gmm::add(Btt, 
 			  gmm::sub_matrix(AM, 
@@ -1034,7 +1059,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 			  gmm::sub_matrix(AM, 
 					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()), 
 					gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
-	gmm::clear(Q_rvar);
+	//gmm::clear(Q_rvar);
 	gmm::clear(Bvv);
 	gmm::clear(Btv);
 	gmm::clear(Bvt);
@@ -1059,6 +1084,8 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 	F_new=problem3d1d::modify_vector_LF(U_old,F_new);
 	}
 
+	cout << " errore 2 "<< endl;
+
 //d-1 find the new solution as AM *U(k+1) = F(k)
 //d-2 under-relaxation process U(k+1)= alfa*U(k+1) + (1-alfa)U(k)
 	#ifdef M3D1D_VERBOSE_
@@ -1070,6 +1097,8 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 	U_new=problem3d1d::iteration_solve(U_old,F_new);
 	gmm::copy(U_new,UM);
 	t=clock()-t;
+	cout << " errore 3 "<< endl;
+
 //e-1 find the new solution for hematocrit as AM_HT *H(k+1) = F(k)
 //e-2 under-relaxation process H(k+1)= alfa*H(k+1) + (1-alfa)H(k)
 	#ifdef M3D1D_VERBOSE_
@@ -1077,7 +1106,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 	#endif
 		assembly();
 		H_new=iteration_solve(H_old, FM_HT);
-
+	cout << " errore 4 "<< endl;
 //f-compute TFR
 //g-compute lymphatic total flow rate
 //h-compute total FR going in or out the interstitial domain
@@ -1125,7 +1154,7 @@ cout<<"area_el   "<<area_el<<"ramo  "<< i<<endl;
 				{
 				problem3d1d::export_vtk();
 				export_vtk();
-				cout << "Solution at iteration " << iteration+1 << " saved" << endl;
+				cout << "Solution at iteration bla bla " << iteration+1 << " saved" << endl;
 				cout << "TFR                 = " << TFR << endl;
 				cout << "Lymphatic Flow Rate = " << FRlymph << endl;
 				cout << "Flow Rate of cube   = " << FRCube << endl;

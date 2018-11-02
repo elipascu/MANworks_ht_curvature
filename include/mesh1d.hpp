@@ -335,13 +335,11 @@ import_network_radius
 	gmm::resize(Radius, mf_data.nb_dof()); 
 	gmm::clear(Radius);
 	for (size_type b = 0; b < nb_branches; ++b) {
-		for (getfem::mr_visitor mrv(mf_data.linked_mesh().region(b)); !mrv.finished(); ++mrv) {
+		for (getfem::mr_visitor mrv(mf_data.linked_mesh().region(b)); !mrv.finished(); ++mrv){
 			for (auto i : mf_data.ind_basic_dof_of_element(mrv.cv()))
 			{
 				Radius[i] = Rdata[b];
-
- 
-				std::cout << "i   " << i <<"    radius    "<<Radius[i]<< endl;
+				//std::cout << "i   " << i <<"    radius    "<<Radius[i]<< endl;
 			}
 		}
 	}

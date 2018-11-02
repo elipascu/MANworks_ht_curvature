@@ -163,10 +163,16 @@ struct param3d1d {
 			std::ifstream ist(RFILE);
 			if (!ist) cerr << "impossible to read from file " << RFILE << endl;
 			import_network_radius(R_, ist, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
-			CSper_.assign(dof_datav, 1);
-			for (auto r : R_) CSper_.emplace_back(2*pi*r);
-			CSarea_.assign(dof_datav, 1);
-			for (auto r : R_) CSarea_.emplace_back(pi*r*r);
+
+			gmm::resize(CSper_, dof_datav);
+			gmm::resize(CSarea_, dof_datav);
+			for (size_type i=0; i < dof_datav ; i++){
+				CSarea_[i] = pi * R_[i] * R_[i];
+				CSper_[i] = 2 *pi *R_[i];	
+				//cout << " R_["<<i<<"] = "<< R_[i]<<endl;
+				//cout << " CSarea_["<<i<<"] = "<< CSarea_[i]<<endl;
+				//cout << " CSper_["<<i<<"] = "<< CSper_[i]<<endl;
+			}
 		}
 
 		if(!IMPORT_CURVE){

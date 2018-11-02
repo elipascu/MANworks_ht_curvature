@@ -1523,11 +1523,12 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
 	scalar_type cond;
 	vector_type U_new;
 	gmm::resize(U_new, dof.tot()); gmm::clear(U_new);
+	cout << " entro in prob3d1d::iteration_solve "<< endl;
 
 	//--------------------------------------	 A, U_new, F_N, cond
 	
 	if ( descr.SOLVE_METHOD == "GMRES" ) {
-	  // Iterative solver //
+	 	// Iterative solver //
 		gmm::iteration iter(descr.RES);  // iteration object with the max residu
 		iter.set_noisy(1);               // output of iterations (2: sub-iteration)
 		iter.set_maxiter(descr.MAXITER); // maximum number of iterations
@@ -1588,38 +1589,38 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
 	        gmm::iteration iterv_gm(descr.RES);
 	 
 	 
-	 // print matrix 
-        //cout << " starting printing matrix ..........!!!!!!!!!!!!!!!!!! ............" << endl;
-	//gmm::MatrixMarket_IO::write("matrix", AM); 	
+		// print matrix 
+       		 //cout << " starting printing matrix ..........!!!!!!!!!!!!!!!!!! ............" << endl;
+		//gmm::MatrixMarket_IO::write("matrix", AM); 	
 		
-        while(RK &&  iter_fixp < max_iter)
-	        {	
-// -> vessel solution
-               // modified rhs +Bvt*pt^k-1
+        	while(RK &&  iter_fixp < max_iter)
+	        	{	
+			// -> vessel solution
+               		// modified rhs +Bvt*pt^k-1
 	        
-		iter_gm.set_iteration(0);
-		#ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- begin of while" << iter_gm.get_iteration() << " iterations." << endl;
-		#endif
-                gmm::resize(F_mod, dof.Pv());
-                gmm::mult(Qvt,gmm::sub_vector(U_old_gm,gmm::sub_interval(dof.Ut(),dof.Pt())),F_mod);
-                gmm::add(gmm::scaled(F_mod,-1),gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
-                scalar_type cond;
-		#ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- starting SuperLU vessel" << endl;
-		#endif
+			iter_gm.set_iteration(0);
+			#ifdef M3D1D_VERBOSE_
+			cout << "-----ZZZZZ ----- begin of while" << iter_gm.get_iteration() << " iterations." << endl;
+			#endif
+                	gmm::resize(F_mod, dof.Pv());
+                	gmm::mult(Qvt,gmm::sub_vector(U_old_gm,gmm::sub_interval(dof.Ut(),dof.Pt())),F_mod);
+                	gmm::add(gmm::scaled(F_mod,-1),gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
+                	scalar_type cond;
+			#ifdef M3D1D_VERBOSE_
+			cout << "-----ZZZZZ ----- starting SuperLU vessel" << endl;
+			#endif
 		
 			
-		double time3 = gmm::uclock_sec();
-                 gmm::SuperLU_solve(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()),
+			double time3 = gmm::uclock_sec();
+                 	gmm::SuperLU_solve(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()),
                                          gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()))  , 
                                     gmm::sub_vector(U_new_gm, 
                                             gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())),
                                     gmm::sub_vector(F_new_gm, 
                                             gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())), cond);
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- time to solveSuperLu vessel::gmm: " << gmm::uclock_sec() - time3 << " seconds\n";
-                #endif
+                	#ifdef M3D1D_VERBOSE_
+                	cout << "-----ZZZZZ ----- time to solveSuperLu vessel::gmm: " << gmm::uclock_sec() - time3 << " seconds\n";
+                	#endif
 		// to decomment for use gmres in the vessel problem
 /*               vector_type Uv_new; 
 		gmm::resize(Uv_new,dof.Uv()+dof.Pv()); gmm::clear(Uv_new);
@@ -1642,38 +1643,38 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
                // building the preconditioner 
 
                // GMRES 
-	       gmm::clear(F_mod);
-               gmm::resize(F_mod, dof.Pt());
-               gmm::mult(Qtv,gmm::sub_vector(U_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(),dof.Pv())),F_mod);
-               gmm::add(gmm::scaled(F_mod,-1) , gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut(),dof.Pt())));
+	       		gmm::clear(F_mod);
+               		gmm::resize(F_mod, dof.Pt());
+               		gmm::mult(Qtv,gmm::sub_vector(U_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(),dof.Pv())),F_mod);
+               		gmm::add(gmm::scaled(F_mod,-1) , gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut(),dof.Pt())));
                
  
 	       
-	       //cout << " copying vectors" << endl;
+	       		//cout << " copying vectors" << endl;
                  
                
 
 			    
-		vector_type Ut_new_gm; 
-		gmm::resize(Ut_new_gm, dof.Ut()+dof.Pt()); gmm::clear(Ut_new_gm);
-		gmm::copy(gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ut_new_gm);	    
-		vector_type Ft_gm;     
-		gmm::resize(Ft_gm, dof.Ut()+dof.Pt()); gmm::clear(Ft_gm);
-		gmm::copy(gmm::sub_vector(F_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ft_gm);
+			vector_type Ut_new_gm; 
+			gmm::resize(Ut_new_gm, dof.Ut()+dof.Pt()); gmm::clear(Ut_new_gm);
+			gmm::copy(gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ut_new_gm);	    
+			vector_type Ft_gm;     
+			gmm::resize(Ft_gm, dof.Ut()+dof.Pt()); gmm::clear(Ft_gm);
+			gmm::copy(gmm::sub_vector(F_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ft_gm);
 // WARNING DO NOT PASS AS INTERVAL THE VECTORS
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- starting gmres tissue" << endl;
-		#endif
-		//gmm::iteration iter(descr.RES); 
-		double time4 = gmm::uclock_sec();
-		gmm::gmres(
-		           gmm::sub_matrix(A, 
+                	#ifdef M3D1D_VERBOSE_
+                	cout << "-----ZZZZZ ----- starting gmres tissue" << endl;
+			#endif
+			//gmm::iteration iter(descr.RES); 
+			double time4 = gmm::uclock_sec();
+			gmm::gmres(
+			           gmm::sub_matrix(A, 
 					   gmm::sub_interval(0,dof.Ut()+dof.Pt()),
 					   gmm::sub_interval(0,dof.Ut()+dof.Pt())) ,
-			   Ut_new_gm,
-			   Ft_gm,
-			   precond, // precond
-			   restart,iter_gm);
+			   	Ut_new_gm,
+			   	Ft_gm,
+			   	precond, // precond
+			   	restart,iter_gm);
 		
 			   
                 //gmm::SuperLU_solve(gmm::sub_matrix(AM, 
@@ -1681,37 +1682,39 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
  	        // 		     gmm::sub_interval(0,dof.Ut()+dof.Pt())) ,
  	        //		     Ut_new,
  	        //		     Ft, cond);
-	        #ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- ... time to solveGmres tissue::gmm: " << gmm::uclock_sec() - time4 << " seconds\n";	   
-		#endif	   
+	        	#ifdef M3D1D_VERBOSE_
+			cout << "-----ZZZZZ ----- ... time to solveGmres tissue::gmm: " << gmm::uclock_sec() - time4 << " seconds\n";	   
+			#endif	   
 			   
 			   
-		gmm::copy(Ut_new_gm, gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())));
+			gmm::copy(Ut_new_gm, gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())));
 			    
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- ... iteration to solve fix point::gmm: " << iter_fixp+1 <<"\n";
-                #endif
-                //Solution residual
-		gmm::add(U_new_gm,gmm::scaled(U_old_gm,-1),res_U); 
-		resSol=gmm::vect_norm2(res_U)/(gmm::vect_norm2(U_old_gm)+1e-18);
-                RK = resSol >  epsSol;
-                iter_fixp++;
-
-                gmm::copy(U_new_gm,U_old_gm);
-                gmm::copy(F_N, F_new_gm);
-                #ifdef M3D1D_VERBOSE_
-                cout << "  .ZZZZZ .. tissue gmres converged in " << iter_gm.get_iteration() << " iterations." << endl; 		
-                #endif
-		}
+                	#ifdef M3D1D_VERBOSE_
+                	cout << "-----ZZZZZ ----- ... iteration to solve fix point::gmm: " << iter_fixp+1 <<"\n";
+                	#endif
+                	//Solution residual
+			gmm::add(U_new_gm,gmm::scaled(U_old_gm,-1),res_U); 
+			resSol=gmm::vect_norm2(res_U)/(gmm::vect_norm2(U_old_gm)+1e-18);
+                	RK = resSol >  epsSol;
+                	iter_fixp++;
+	
+                	gmm::copy(U_new_gm,U_old_gm);
+                	gmm::copy(F_N, F_new_gm);
+                	#ifdef M3D1D_VERBOSE_
+                	cout << "  .ZZZZZ .. tissue gmres converged in " << iter_gm.get_iteration() << " iterations." << endl; 		
+                	#endif
+		} // end of while
 
                 gmm::copy(U_old_gm,U_new);
-	}
-	else if ( descr.SOLVE_METHOD == "SuperLU" ) 	//Solving with SuperLU method
- 	gmm::SuperLU_solve(A, U_new, F_N, cond);
- 	
+	} // end of if for GMRES
+	else if ( descr.SOLVE_METHOD == "SuperLU" ){ 	//Solving with SuperLU method
+		cout << " entro nell'if del SuperLU " << endl;
+ 		gmm::SuperLU_solve(A, U_new, F_N, cond);
+		cout << " end of SuperLU_solve " << endl;
+ 	}
 	//--------------------------------------
 	
-	//cout << "Old Pt is " << gmm::sub_vector(U_O, gmm::sub_interval(dof.Ut(), dof.Pt())) << endl;
+		//cout << "Old Pt is " << gmm::sub_vector(U_O, gmm::sub_interval(dof.Ut(), dof.Pt())) << endl;
 
 	//UNDER-RELAXATION
 	if(alfa!=1){

@@ -958,10 +958,10 @@ problemHT::solve_fixpoint(void)
 			// cout << "-------- end switch " << endl;
 			size_type pos=0;
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
-			for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
+				for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
 				{
-				MU[muu] = mui[pos];
-				pos++;}
+					MU[muu] = mui[pos];
+					pos++;}
 
 			//b-modify the mass matrix for fluid dynamic problem
 			#ifdef M3D1D_VERBOSE_
@@ -969,56 +969,68 @@ problemHT::solve_fixpoint(void)
 			#endif
 			scalar_type kvi = param.kv(mimv, i);
 			// Coefficient \pi^2*Ri'^4/\kappa_v
-			vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+			vector_type ci(mf_coefvi[i].nb_dof());
+			vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 			vector_type ciD(mf_coefvi[i].nb_dof());
-			/*for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 					scalar_type area_el = param.CSarea(j);
 					scalar_type per_el = param.CSper(j);
 					// works only for P0 coefficients
-					ciM[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el * area_el / kvi * (1.0 + param.Curv(i, j)*param.Curv(i, j)*Ri*Ri) / mu_start * mui[j];
+					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 					ciD[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el;
+					ciM[mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*Ri*Ri) / mu_start * mui[indcv_loc];
 					Q_rvar[j] = per_el * Lp *P_ /U_;
-					//cout << "area_el   "<< area_el << "    ramo  " << i << endl;
-					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl; 
+					cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
+					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
-			}*/
+			}
 			for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
 				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 				// cout << "-------- ci  "<<ci[j]<< " ";
 				// 			cout<<" Ri"<<Ri;
 				// 			cout<<" kvi"<<kvi;
-				// 			cout<<" curv"<<param.Curv(i,j)<<endl;
+		 			cout<<" ci  curv"<<param.Curv(i,j)<<endl;
 				// 	cout << "mu_start" << mu_start << endl;
 				// cout << "mui[j]" <<mui[j] << endl;
 			}
-			
+		
+                        for(size_type j=0; j< mf_coefvi[i].nb_dof(); j++ ){ 
+				cout<< " ci[j]  = " << ci[j]<< ",        ciM[j]   "<<ciM[j]<<endl;}	
 
 			// Allocate temp local matrices
-		// cout << "-------- entra Mvv_mui "<< endl;
+			// cout << "-------- entra Mvv_mui "<< endl;
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
+			sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
 			// Build Mvv_mui
-			// cout << "-------- entra netw_pois "<< endl;		
-			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
+			// cout << "-------- entra netw_pois "<< endl;
+			//asm_network_poiseuille(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));	
+			//gmm::clear(Mvv_mui);
+			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ciM, meshv.region(i));
 			// Copy Mvv_mui in Mvv_mu
 			gmm::add(Mvv_mui, 
 				gmm::sub_matrix(Mvv_mu, 
 					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
 					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
 			gmm::clear(Mvv_mui);
+			gmm::clear(Dvvi);
+		
 		} /* end of branches loop */
+		//for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
+		cout << " errore 1 "<< endl;
 		//Update Mvv and AM matrix
 		gmm::add(Mvv_mu,Mvv_bc,Mvv);
 		gmm::clear(gmm::sub_matrix(AM, 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
+		cout << " errore 2 "<< endl;
 		gmm::copy(Mvv,
 				gmm::sub_matrix(AM, 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
-
+		cout << " errore 3 "<< endl;
 		//c- add the lymphatic contribution
 		#ifdef M3D1D_VERBOSE_
 		cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;
@@ -1037,10 +1049,10 @@ problemHT::solve_fixpoint(void)
 		#endif
 
 		t=clock();
-
+		cout << " errore 4 "<< endl;
 		U_new=problem3d1d::iteration_solve(U_old,F_new);
 		gmm::copy(U_new,UM);
-	
+		cout << " errore 5 "<< endl;
 		// gmm::clear(UM);
 		// problem3d1d::solve_samg();
 		// gmm::copy(UM,U_new);

@@ -895,9 +895,21 @@ problemHT::solve_fixpoint(void)
 	#endif
 
 	gmm::copy(UM_HT,H_old);
-	//4- Iterative Process
-	while(RK && iteration < max_iteration){	
 
+
+
+
+
+	//4- Iterative Process
+	while(RK && iteration < max_iteration){
+		// pulisco AM da Dvv e Jvv e i rispettivi trasposti
+		gmm::clear(gmm::sub_matrix(AM,
+			gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
+			gmm::sub_interval(dof.Ut() + dof.Pt(), dof.Uv() ) ) );	
+
+		gmm::clear(gmm::sub_matrix(AM,
+			gmm::sub_interval(dof.Ut() + dof.Pt(),  dof.Uv() ),
+			gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ) ) );	
 		// a-compute the viscosity in each vessel
 		#ifdef M3D1D_VERBOSE_
 		cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
@@ -985,7 +997,7 @@ problemHT::solve_fixpoint(void)
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
 			}
-			for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
+			/*for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
 				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 				// cout << "-------- ci  "<<ci[j]<< " ";
 				// 			cout<<" Ri"<<Ri;
@@ -993,7 +1005,7 @@ problemHT::solve_fixpoint(void)
 		 		//		cout<<" ci  curv"<<param.Curv(i,j)<<endl;
 				// 	cout << "mu_start" << mu_start << endl;
 				// cout << "mui[j]" <<mui[j] << endl;
-			}
+			}*/
 		
 
 			// Allocate temp local matrices
@@ -1010,7 +1022,16 @@ problemHT::solve_fixpoint(void)
 				gmm::sub_matrix(Mvv_mu, 
 					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
 					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
+			gmm::add(gmm::scaled(gmm::transposed(Dvvi), -1.0),
+				gmm::sub_matrix(AM,
+					gmm::sub_interval(dof.Ut() + dof.Pt() + shift, mf_Uvi[i].nb_dof()),
+					gmm::sub_interval(dof.Ut() + dof.Pt() +dof.Uv(), dof.Pv() )));
+			gmm::add(Dvvi,
+				gmm::sub_matrix(AM,
+					gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+					gmm::sub_interval(dof.Ut() + dof.Pt() + shift, mf_Uvi[i].nb_dof())));
 			gmm::clear(Mvv_mui);
+			
 			gmm::clear(Dvvi);
 		
 		} /* end of branches loop */
@@ -1029,6 +1050,18 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
 		cout << " errore 3 "<< endl;
+		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
+		asm_network_junctions(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.R());
+		gmm::add(Jvv,
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv())));
+
+		gmm::add(gmm::scaled(gmm::transposed(Jvv), -1.0),
+			gmm::sub_matrix(AM,
+				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv()),
+				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
+		
 		//c- add the lymphatic contribution
 		#ifdef M3D1D_VERBOSE_
 		cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;

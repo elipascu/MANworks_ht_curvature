@@ -339,7 +339,7 @@ import_network_radius
 			for (auto i : mf_data.ind_basic_dof_of_element(mrv.cv()))
 			{
 				Radius[i] = Rdata[b];
-				std::cout << "i   " << i <<"    radius    "<<Radius[i]<< endl;
+				//std::cout << "i   " << i <<"    radius    "<<Radius[i]<< endl;
 			}
 		}
 	}

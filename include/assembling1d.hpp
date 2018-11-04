@@ -245,10 +245,8 @@ asm_network_junctions
 	for (size_type i=0; i<mf_u.size(); ++i){ /* branch loop */
 
 		scalar_type Ri = compute_radius(mim, mf_data, radius, i);
-		cout << "Region " << i << endl;
 
 		for (size_type j=0; j<J_data.size(); ++j){
-			cout << " giunzione  " << j << endl;
 			// Identify pressure dof corresponding to junction node
 			VEC psi(mf_p.nb_dof());
 			asm_basis_function(psi, mim, mf_p, J_data[j].rg);
@@ -273,25 +271,24 @@ asm_network_junctions
 			last_=dof_enum[fine-1];
 			dof_enum.clear();
 			scalar_type R_loc=0;
-			cout << " size convex to point "<< mf_data.linked_mesh().convex_to_point(J_data[j].idx).size() << endl;
+			//cout << " size convex to point "<< mf_data.linked_mesh().convex_to_point(J_data[j].idx).size() << endl;
 			// mf_data.linked_mesh().region(i).convex_to_point(J_data[j].idx)[0] non puÃÃ² farlo 
-			for (size_type k=0; k < mf_data.linked_mesh().convex_to_point(J_data[j].idx).size(); k++){
-				cout << " k = " << k<<endl;
+			for (auto k : mf_data.linked_mesh().convex_to_point(J_data[j].idx)){
 				if ( mf_data.linked_mesh().region(i).is_in(k) ) {
-					R_loc = radius[k];
-					cout << " entro nell'if con k = " << k << endl;
+					R_loc = radius[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
+					//cout << " entro nell'if con dof = " << mf_data.ind_basic_dof_of_element(k)[0] << endl;
 				}
 			}
 			//cout << "R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be){
-				J(row, i*mf_u[i].nb_dof()+last_) -= pi*Ri*Ri;//col to be generalized!
-				cout << " primo if   R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
+				J(row, i*mf_u[i].nb_dof()+last_) -= pi*R_loc*R_loc;//col to be generalized!
+				//cout << " primo if   R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
-				J(row, i*mf_u[i].nb_dof()+first_) += pi*Ri*Ri;	//col to be generalized!
-				cout << " secondo if    R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
+				J(row, i*mf_u[i].nb_dof()+first_) += pi*R_loc*R_loc;	//col to be generalized!
+				//cout << " secondo if    R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
 			}
 		}
 	}

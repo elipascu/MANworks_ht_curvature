@@ -1052,7 +1052,7 @@ problemHT::solve_fixpoint(void)
 		cout << " errore 3 "<< endl;
 		// update the Junction matrix and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
-		asm_network_junctions(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.R());
+		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
 		gmm::add(Jvv,
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),

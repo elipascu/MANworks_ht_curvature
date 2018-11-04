@@ -296,6 +296,78 @@ asm_network_junctions
 
 } /* end of asm_junctions */
 
+template<typename MAT, typename VEC>
+void
+asm_network_junctions_rvar
+(MAT & J,
+	const mesh_im & mim,
+	const std::vector<mesh_fem> & mf_u,
+	const mesh_fem & mf_p,
+	const mesh_fem & mf_data,
+	const std::vector<getfem::node> & J_data,
+	const VEC & area
+)
+{
+	GMM_ASSERT1(mf_p.get_qdim() == 1,
+		"invalid data mesh fem for pressure (Qdim=1 required)");
+	GMM_ASSERT1(mf_u[0].get_qdim() == 1,
+		"invalid data mesh fem for velocity (Qdim=1 required)");
+	GMM_ASSERT1(getfem::name_of_fem(mf_p.fem_of_element(0)) != "FEM_PK(1,0)" &&
+		getfem::name_of_fem(mf_p.fem_of_element(0)) != "FEM_PK_DISCONTINUOUS(1,0)",
+		"invalid data mesh fem for pressure (k>0 required)");
+
+	for (size_type i = 0; i < mf_u.size(); ++i) { /* branch loop */
+
+		for (size_type j = 0; j < J_data.size(); ++j) {
+			// Identify pressure dof corresponding to junction node
+			VEC psi(mf_p.nb_dof());
+			asm_basis_function(psi, mim, mf_p, J_data[j].rg);
+			size_type row = 0;
+			bool found = false;
+			while (!found && row < mf_p.nb_dof()) {
+				found = (1.0 - psi[row] < 1.0E-06);
+				if (!found) row++;
+			}
+			GMM_ASSERT1(row != 0 && found,  // No junction in first point
+				"Error in assembling pressure basis function");
+			std::vector<long signed int>::const_iterator bb = J_data[j].branches.begin();
+			std::vector<long signed int>::const_iterator be = J_data[j].branches.end();
+			size_type last_, first_;
+			vector_type dof_enum;
+			int fine = 0;
+			for (getfem::mr_visitor mrv(mf_u[i].linked_mesh().region(i)); !mrv.finished(); ++mrv)
+				for (auto b : mf_u[i].ind_basic_dof_of_element(mrv.cv()))
+				{
+					dof_enum.emplace_back(b);
+					fine++;
+				}
+			first_ = dof_enum[0];
+			last_ = dof_enum[fine - 1];
+			dof_enum.clear();
+			scalar_type area_loc = 0;
+			//cout << " size convex to point "<< mf_data.linked_mesh().convex_to_point(J_data[j].idx).size() << endl;
+			// mf_data.linked_mesh().region(i).convex_to_point(J_data[j].idx)[0] non puo farlo 
+			for (auto k : mf_data.linked_mesh().convex_to_point(J_data[j].idx)) {
+				if (mf_data.linked_mesh().region(i).is_in(k)) {
+					area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
+					//cout << " entro nell'if con dof = " << mf_data.ind_basic_dof_of_element(k)[0] << endl;
+				}
+			}
+			//cout << "R_loc =  " << R_loc << ",  Ri =  "<< Ri<< endl;
+			// Outflow branch contribution
+			if (std::find(bb, be, i) != be) {
+				J(row, i*mf_u[i].nb_dof() + last_) -= area_loc;//col to be generalized!
+				cout << " primo if   area_loc =  " << area_loc << endl;
+			}
+			// Inflow branch contribution
+			if (i != 0 && std::find(bb, be, -i) != be) {
+				J(row, i*mf_u[i].nb_dof() + first_) += area_loc;	//col to be generalized!
+				cout << " secondo if    area_loc =  " << area_loc << endl;
+			}
+		}
+	}
+
+} /* end of asm_junctions */
 
 } /* end of namespace */
 

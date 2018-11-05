@@ -759,11 +759,11 @@ problemHT::solve_fixpoint(void)
 	scalar_type Pi_v=param.pi_v();
 	scalar_type sigma=param.sigma();
 	scalar_type picoef;
-        vector_type DeltaPi, Ones(dof.Pv(),1.0);
+    vector_type DeltaPi, Ones(dof.Pv(),1.0);
 	gmm::resize(DeltaPi, dof.Pv()); gmm::clear(DeltaPi);
-        vector_type auxOSt(dof.Pt());
-        vector_type auxOSv(dof.Pv());
-        vector_type auxCM(dof.Pt()); gmm::clear(auxCM);
+    vector_type auxOSt(dof.Pt());
+    vector_type auxOSv(dof.Pv());
+	vector_type auxCM(dof.Pt()); gmm::clear(auxCM); // questo serve per calcolare Mass residual
 	// Gnuplot gp;
 	vector_type RES_SOL(max_iteration), RES_CM(max_iteration);
 
@@ -805,12 +805,13 @@ problemHT::solve_fixpoint(void)
 			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())),
 				Btv);
 	gmm::scale(Btv,-1.0);
+	
 	//Extracting Oncotic term				
 	picoef=sigma*(Pi_v-Pi_t);
 	gmm::copy(Ones, DeltaPi);
-        gmm::scale(DeltaPi,picoef);
-       	gmm::mult(Btv,DeltaPi,auxOSt);
-        gmm::mult(Bvv,DeltaPi,auxOSv);
+    gmm::scale(DeltaPi,picoef);
+    gmm::mult(Btv,DeltaPi,auxOSt);
+    gmm::mult(Bvv,DeltaPi,auxOSv);
 	*/
 
 	/*
@@ -1115,6 +1116,13 @@ problemHT::solve_fixpoint(void)
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
+
+		//Extracting Oncotic term				
+		picoef=sigma*(Pi_v-Pi_t);
+		gmm::copy(Ones, DeltaPi);
+	    gmm::scale(DeltaPi,picoef);
+		gmm::mult(Btv,DeltaPi,auxOSt); // questi due vanno in FM
+    	gmm::mult(Bvv,DeltaPi,auxOSv);
 		
 		gmm::clear(Bvv);
 		gmm::clear(Btv);
@@ -1126,18 +1134,20 @@ problemHT::solve_fixpoint(void)
 		//sparse_matrix_type Mvv_bcprova(dof.Uv(), dof.Uv());
 		vector_type Fv_bc(dof.Uv());
 		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
-		cout << " p0coef =  " << p0coef << endl;
 		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
 		asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
 
-
-
+		// RHS: tiene FM sempre uguale e aggiorna F_new. credo sia stato creato appositamente per il termine linfatico
+		gmm::copy(FM,F_new);
+		gmm::clear(gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv())));
+		gmm::add(Fv_bc, gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut() + dof.Pt(), dof.Uv())));
+		gmm::add(gmm::scaled(auxOSt, -1), gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut(), dof.Pt())));
+		gmm::add(auxOSv, gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
 
 		//c- add the lymphatic contribution
 		#ifdef M3D1D_VERBOSE_
 		cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;
 		#endif
-		gmm::copy(FM,F_new);
 		if(!LINEAR_LYMPH()){
 			//Adding lymphatic contribution
 			F_new=problem3d1d::modify_vector_LF(U_old,F_new);

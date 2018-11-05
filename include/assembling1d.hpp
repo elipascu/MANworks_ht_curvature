@@ -181,6 +181,8 @@ asm_network_bc
 			MAT Mi(mf_u[i].nb_dof(), mf_u[i].nb_dof());
 			getfem::asm_mass_matrix(Mi,
 				mim, mf_u[i], BC[bc].rg);
+			if (BC[bc].value == 0 ) GMM_WARNING1("You wanted to divide by BC[bc].value = 0 in asm_network_bc ");
+			// dead ends are set as MIX with value 0
                         gmm::scale(Mi, pi*pi*Ri*Ri*Ri*Ri/BC[bc].value);
 			gmm::add(gmm::scaled(Mi, -1.0), 
 				gmm::sub_matrix(M,
@@ -190,7 +192,7 @@ asm_network_bc
 			// Add p0 contribution to Fv
 			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
 				mim, mf_u[i], mf_data, gmm::scaled(P0, pi*Ri*Ri), BC[bc].rg);			
-}
+		}
 		else if (BC[bc].label=="INT") { // Internal Node
 			GMM_WARNING1("internal node passed as boundary.");
 		}
@@ -244,20 +246,9 @@ asm_network_bc_rvar
 
 		if (BC[bc].label=="DIR") { // Dirichlet BC
 			// Add gv contribution to Fv
-
-			/*for (auto k : mf_data.linked_mesh().convex_to_point(BC[bc].idx)) {
-				if (mf_data.linked_mesh().region(i).is_in(k)) {
-					area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
-					//cout << " entro nell'if con dof = " << mf_data.ind_basic_dof_of_element(k)[0] << endl;
-					cout << " area_loc = " << area_loc << ",    index = " << BC[bc].idx << endl;
-				}
-			}
-			*/
 			size_type k = mf_data.linked_mesh().convex_to_point(BC[bc].idx)[0];
 			area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
 			//cout << " area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
-
-			//scalar_type Rbc = compute_radius(mim, mf_data, R, i);//R[mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]];
 			scalar_type BCVal = BC[bc].value*area_loc;  // valore al bordo * area
 			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
 				mim, mf_u[i], mf_data, gmm::scaled(ones, BCVal), BC[bc].rg);

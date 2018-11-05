@@ -816,7 +816,7 @@ problem3d1d::assembly_rhs(void)
         // Mass matrix for lymphatic sink in the interstitium
         sparse_matrix_type Mlf(dof.Pt(), dof.Pt());
         // Right Hand Side for lymph sink
-        vector_type Pl(dof.Pt(),PARAM.real_value("PL"));
+        vector_type Pl(dof.Pt(),PARAM.real_value("PL")); // PL è settato a zero
         vector_type Pl_aux(dof.Pt());
 
 	// Coefficients for tissue BCs
@@ -845,7 +845,7 @@ problem3d1d::assembly_rhs(void)
 	}
 	else {
 		sparse_matrix_type Mtt(dof.Ut(), dof.Ut());
-		asm_tissue_bc(Mtt, Ft, mimt, mf_Ut, mf_coeft, BCt, P0, beta);  //Mtt serve solo per mix conditions
+		asm_tissue_bc(Mtt, Ft, mimt, mf_Ut, mf_coeft, BCt, P0, beta);
 		gmm::add(Mtt, 
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(0, dof.Ut()),
@@ -872,7 +872,7 @@ problem3d1d::assembly_rhs(void)
         scalar_type lf_coef=param.Q_LF(0);//scalar then uniform untill now
         asm_tissue_lymph_sink(Mlf, mimt, mf_Pt);
         gmm::scale(Mlf,lf_coef);
-        gmm::mult(Mlf,Pl,Pl_aux);
+        gmm::mult(Mlf,Pl,Pl_aux); // multiplying by zero..
         gmm::add(Pl_aux, gmm::sub_vector(FM, gmm::sub_interval(dof.Ut(),dof.Pt())));
 
 	// De-allocate memory

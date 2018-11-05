@@ -47,14 +47,12 @@ int main(int argc, char *argv[])
 			// Solve the problem
 			if(p.HEMATOCRIT_TRANSPORT(argc, argv))
 				{
-				cout << "entro nell'if di hematocrtit transport " << endl;
+				//cout << "entro nell'if di hematocrtit transport " << endl;
 				if (!p.problem3d1d::solve()) GMM_ASSERT1(false, "solve procedure has failed");
 				p.init(argc, argv);
-				p.solve_fixpoint();
-				//if (!p.solve_fixpoint()) GMM_ASSERT1(false, "solve procedure has failed");			
+				if (!p.solve_fixpoint()) GMM_ASSERT1(false, "solve procedure has failed");			
 
 
-			std::cout << "main : ho fatto solve_fixpoint  " << endl; 
 			// Save results in .vtk format
 			p.export_vtk();
 			}

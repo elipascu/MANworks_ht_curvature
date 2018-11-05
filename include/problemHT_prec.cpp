@@ -745,9 +745,9 @@ problemHT::solve_fixpoint(void)
 	clock_t time_G;
 	vector_type F_LF; gmm::resize(F_LF, dof.Pt());
 	vector_type Uphi(dof.Pv()); 
-	sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
-	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	//sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
+	//sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
+	//sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 	vector_type Q_rvar(mf_coefv.nb_dof());
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
@@ -786,7 +786,8 @@ problemHT::solve_fixpoint(void)
 	sparse_matrix_type Mbar(dof.Pv(), dof.Pt());
 	sparse_matrix_type Mlin(dof.Pv(), dof.Pt());
 	asm_exchange_aux_mat(Mbar, Mlin, mimv, mf_Pt, mf_Pv, param.R(), descr.NInt);
-
+	
+	/*
 	//Extracting matrices Bvt, Bvv
 	gmm::copy(gmm::sub_matrix(AM, 
 			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
@@ -809,6 +810,7 @@ problemHT::solve_fixpoint(void)
         gmm::scale(DeltaPi,picoef);
        	gmm::mult(Btv,DeltaPi,auxOSt);
         gmm::mult(Bvv,DeltaPi,auxOSv);
+	*/
 
 	//Extracting Mvv_kv
 	#ifdef M3D1D_VERBOSE_
@@ -1063,7 +1065,16 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
 		cout << " errore 3 "<< endl;
-		// update the Junction matrix and add it to the monolitic matrix
+
+		// boundary condition for vessels - only DIR conditions!
+		//sparse_matrix_type Mvv_bcprova(dof.Uv(), dof.Uv());
+		vector_type Fv_bcprova(dof.Uv());
+		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
+		cout << " p0coef =  " << p0coef << endl;
+		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
+		asm_network_bc_rvar(Fv_bcprova, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
+
+		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
 		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
 		gmm::add(Jvv,
@@ -1075,7 +1086,7 @@ problemHT::solve_fixpoint(void)
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
-		
+		gmm::clear(Jvv);
 		
 		// update the exchange matrices Bvv, Bvt, Btv, Btt
 		sparse_matrix_type Btt(dof.Pt(), dof.Ut());
@@ -1083,10 +1094,10 @@ problemHT::solve_fixpoint(void)
 		sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 		sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 
-		cout << " dim Q_rvar = " << Q_rvar.size() << " dim param.Q() " << param.Q().size() << endl;
-		for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
+		//cout << " dim Q_rvar = " << Q_rvar.size() << " dim param.Q() " << param.Q().size() << endl;
+		//for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
 		bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
-		asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, param.Q(), NEWFORM);
+		asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar, NEWFORM);
 		// Copying Btt
 		gmm::add(Btt,
 			gmm::sub_matrix(AM,

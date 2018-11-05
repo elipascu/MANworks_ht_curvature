@@ -171,22 +171,8 @@ asm_network_bc
 
 		if (BC[bc].label=="DIR") { // Dirichlet BC
 			// Add gv contribution to Fv
-			cout << "BC[bc].idx        " << BC[bc].idx << endl;
-			cout << "dim R " << R.size() << endl;
-
-                        cout << "dim mesh "<< mf_data.linked_mesh().convex_index ().size()<<std::endl;
-     
-                         cout << "dim mesh points "<< mf_data.linked_mesh().nb_points()<<std::endl;
-			// cout << "mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]           " << mf_data.ind_basic_dof_of_element(BC[bc].idx)[0] << endl;
-
-
-			//region(i).convex_to_point per prendere il convesso dal punto
-			//	dal convessso al ramo, siccome devo prendere il dof, passo da basic_dof_of_element
-
-
-			
 			scalar_type Rbc = compute_radius(mim, mf_data, R, i);//R[mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]];
-			scalar_type BCVal = BC[bc].value*pi*Rbc*Rbc;
+			scalar_type BCVal = BC[bc].value*pi*Rbc*Rbc;  // valore al bordo * area
 			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
 				mim, mf_u[i], mf_data, gmm::scaled(ones, BCVal), BC[bc].rg);
 		} 
@@ -217,6 +203,93 @@ asm_network_bc
 	}
 
 }
+
+/*! Build the mixed boundary conditions for Poiseuille's problem for compliant vessels
+    @f$ M=\int_{\mathcal{E}_u} \frac{1}{\beta}\,u\,v~d\sigma@f$ and
+    @f$ F=-\int_{\mathcal{E}_u} p0\,v~d\sigma-\int_{\mathcal{E}_p} g\,v~d\sigma@f$
+ */
+/*!
+	@param M        BC contribution to Poiseuille's mass matrix
+	@param F        BC contribution to Poiseuille's rhs
+	@param mim      The integration method to be used
+	@param mf_u     The finite element method for the velocity @f$u@f$
+	@param mf_data  The finite element method for the coefficients
+	@param BC       Array of values of network boundary points
+	@param P0       Array of values of the external pressure @f$p_0@f$
+	@param R        Network areas
+	@param rg       The region where to integrate
+	@ingroup asm
+ */ 
+template<typename MAT, typename VEC>
+void
+asm_network_bc_rvar
+	(MAT & M, VEC & F,
+	 const mesh_im & mim,
+	 const std::vector<mesh_fem> & mf_u,
+	 const mesh_fem & mf_data,
+	 const std::vector<getfem::node> & BC,
+	 const VEC & P0,
+         const VEC & area
+         //,const scalar_type beta
+	 ) 
+{
+	// Aux data
+	std::vector<scalar_type> ones(mf_data.nb_dof(), 1.0);
+
+	for (size_type bc=0; bc < BC.size(); bc++) {
+
+		size_type i = abs(BC[bc].branches[0]);
+		size_type start = i*mf_u[i].nb_dof();
+		scalar_type area_loc = 0;
+
+		if (BC[bc].label=="DIR") { // Dirichlet BC
+			// Add gv contribution to Fv
+
+			/*for (auto k : mf_data.linked_mesh().convex_to_point(BC[bc].idx)) {
+				if (mf_data.linked_mesh().region(i).is_in(k)) {
+					area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
+					//cout << " entro nell'if con dof = " << mf_data.ind_basic_dof_of_element(k)[0] << endl;
+					cout << " area_loc = " << area_loc << ",    index = " << BC[bc].idx << endl;
+				}
+			}
+			*/
+			size_type k = mf_data.linked_mesh().convex_to_point(BC[bc].idx)[0];
+			area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
+			//cout << " area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
+
+			//scalar_type Rbc = compute_radius(mim, mf_data, R, i);//R[mf_data.ind_basic_dof_of_element(BC[bc].idx)[0]];
+			scalar_type BCVal = BC[bc].value*area_loc;  // valore al bordo * area
+			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
+				mim, mf_u[i], mf_data, gmm::scaled(ones, BCVal), BC[bc].rg);
+		} 
+		/* else if (BC[bc].label=="MIX") { // Robin BC
+			// Add correction to Mvv
+			MAT Mi(mf_u[i].nb_dof(), mf_u[i].nb_dof());
+			getfem::asm_mass_matrix(Mi,
+				mim, mf_u[i], BC[bc].rg);
+                        gmm::scale(Mi, pi*pi*Ri*Ri*Ri*Ri/BC[bc].value);
+			gmm::add(gmm::scaled(Mi, -1.0), 
+				gmm::sub_matrix(M,
+					gmm::sub_interval(start, mf_u[i].nb_dof()),
+					gmm::sub_interval(start, mf_u[i].nb_dof())));
+			gmm::clear(Mi);	
+			// Add p0 contribution to Fv
+			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
+				mim, mf_u[i], mf_data, gmm::scaled(P0, pi*Ri*Ri), BC[bc].rg);			
+		}*/
+		else if (BC[bc].label=="INT") { // Internal Node
+			GMM_WARNING1("internal node passed as boundary.");
+		}
+		else if (BC[bc].label=="JUN") { // Junction Node
+			GMM_WARNING1("junction node passed as boundary.");
+		}
+		else {
+			GMM_ASSERT1(0, "Compliant vessels are solved only for DIR conditions. Unknown Boundary Condition"<< BC[bc].label << endl);
+		}
+	}
+
+}
+
 
 
 /*!
@@ -273,7 +346,7 @@ asm_network_junctions
 			dof_enum.clear();
 			scalar_type R_loc=0;
 			//cout << " size convex to point "<< mf_data.linked_mesh().convex_to_point(J_data[j].idx).size() << endl;
-			// mf_data.linked_mesh().region(i).convex_to_point(J_data[j].idx)[0] non puÃÃ² farlo 
+			// mf_data.linked_mesh().region(i).convex_to_point(J_data[j].idx)[0] non puo farlo 
 			for (auto k : mf_data.linked_mesh().convex_to_point(J_data[j].idx)){
 				if ( mf_data.linked_mesh().region(i).is_in(k) ) {
 					R_loc = radius[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
@@ -357,17 +430,17 @@ asm_network_junctions_rvar
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be) {
 				J(row, i*mf_u[i].nb_dof() + last_) -= area_loc;//col to be generalized!
-				cout << " primo if   area_loc =  " << area_loc << endl;
+				//cout << " primo if   area_loc =  " << area_loc << endl;
 			}
 			// Inflow branch contribution
 			if (i != 0 && std::find(bb, be, -i) != be) {
 				J(row, i*mf_u[i].nb_dof() + first_) += area_loc;	//col to be generalized!
-				cout << " secondo if    area_loc =  " << area_loc << endl;
+				//cout << " secondo if    area_loc =  " << area_loc << endl;
 			}
 		}
 	}
 
-} /* end of asm_junctions */
+} /* end of asm_junctions_rvar */
 
 } /* end of namespace */
 

@@ -220,10 +220,10 @@ asm_network_bc
 	@param rg       The region where to integrate
 	@ingroup asm
  */ 
-template<typename MAT, typename VEC>
+template<typename VEC>
 void
 asm_network_bc_rvar
-	(MAT & M, VEC & F,
+	(VEC & F,
 	 const mesh_im & mim,
 	 const std::vector<mesh_fem> & mf_u,
 	 const mesh_fem & mf_data,

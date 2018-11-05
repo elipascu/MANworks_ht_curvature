@@ -748,6 +748,7 @@ problemHT::solve_fixpoint(void)
 	//sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
 	//sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 	//sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	sparse_matrix_type Mvv_mu(dof.Uv(), dof.Uv());
 	vector_type Q_rvar(mf_coefv.nb_dof());
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
@@ -812,10 +813,11 @@ problemHT::solve_fixpoint(void)
         gmm::mult(Bvv,DeltaPi,auxOSv);
 	*/
 
+	/*
 	//Extracting Mvv_kv
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Mvv0 in FixPoint Hematocrit..." << endl;
-	#endif
+	#endif	
 	// Local matrices
 	size_type shift = 0;
 	sparse_matrix_type Mvv_mu(dof.Uv(), dof.Uv());
@@ -829,10 +831,11 @@ problemHT::solve_fixpoint(void)
 		 scalar_type kvi = param.kv(mimv, i);
 // cout << " ----------kvi.." <<kvi << endl;
 
-		/* Va questo nel caso curvo?
+		// Va questo nel caso curvo?
 		// Coefficient \pi^2*Ri'^4/\kappa_v
 		vector_type ci(mf_coefvi[i].nb_dof(), pi*pi*Ri*Ri*Ri*Ri/kvi);
-		*/ //o questo?
+		//o questo?
+	
 		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 		for(size_type j=0; j<mf_coefvi[i].nb_dof(); ++j){
 			ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri);
@@ -859,7 +862,7 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(Dvvi);
 		gmm::clear(Mvvi);
 		
-	} /* end of branches loop */
+	} // end of branches loop
 	sparse_matrix_type Mvv_bc(dof.Uv(),dof.Uv());
 	sparse_matrix_type Mvv(dof.Uv(),dof.Uv());
 	gmm::copy(gmm::sub_matrix(AM, 
@@ -869,6 +872,7 @@ problemHT::solve_fixpoint(void)
 	gmm::add(Mvv,Mvv_mu,Mvv_bc);
 	gmm::clear(Mvv_mu);
 	gmm::clear(Mvv);
+	*/
 
 	// Opening file to save number of iteration and residual
 	std::ofstream SaveResidual;
@@ -929,10 +933,10 @@ problemHT::solve_fixpoint(void)
 		#ifdef M3D1D_VERBOSE_
 		cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
 		#endif
-		shift = 0;
+		size_type shift = 0;
 		size_type shift_h=0;
 		scalar_type shift_coef=0;
-		gmm::clear(MU); gmm::resize(MU, mf_coefv.nb_dof());
+		gmm::clear(MU); gmm::resize(MU, mf_coefv.nb_dof());  // MU lo riempio adesso, prima è stato solo dichiarato
 		for(size_type i=0; i<nb_branches; ++i){
 
 			vector_type Hi(mf_Hi[i].nb_dof());
@@ -1053,26 +1057,19 @@ problemHT::solve_fixpoint(void)
 
 		cout << " errore 1 "<< endl;
 		//Update Mvv and AM matrix
-		gmm::add(Mvv_mu,Mvv_bc,Mvv);
-		gmm::clear(gmm::sub_matrix(AM, 
-				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
-				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
-		cout << " errore 2 "<< endl;
-		gmm::copy(Mvv,
+		//gmm::add(Mvv_mu,Mvv_bc,Mvv); // non ho Mvv_bc perchè faccio solo caso DIR
+		//gmm::clear(gmm::sub_matrix(AM,  // ho già pulito tutto all'inizio del while
+		//		gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
+		//		gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
+
+		gmm::copy(Mvv_mu,
 				gmm::sub_matrix(AM, 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
-		gmm::clear(Mvv);
+		//gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
 		cout << " errore 3 "<< endl;
 
-		// boundary condition for vessels - only DIR conditions!
-		//sparse_matrix_type Mvv_bcprova(dof.Uv(), dof.Uv());
-		vector_type Fv_bcprova(dof.Uv());
-		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
-		cout << " p0coef =  " << p0coef << endl;
-		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
-		asm_network_bc_rvar(Fv_bcprova, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
 
 		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
@@ -1123,6 +1120,18 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(Btv);
 		gmm::clear(Bvt);
 		gmm::clear(Btt);
+
+
+		// boundary condition for vessels - only DIR conditions!
+		//sparse_matrix_type Mvv_bcprova(dof.Uv(), dof.Uv());
+		vector_type Fv_bc(dof.Uv());
+		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
+		cout << " p0coef =  " << p0coef << endl;
+		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
+		asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
+
+
+
 
 		//c- add the lymphatic contribution
 		#ifdef M3D1D_VERBOSE_

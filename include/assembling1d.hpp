@@ -309,7 +309,7 @@ asm_network_junctions
 	
 	for (size_type i=0; i<mf_u.size(); ++i){ /* branch loop */
 
-		scalar_type Ri = compute_radius(mim, mf_data, radius, i);
+		//scalar_type Ri = compute_radius(mim, mf_data, radius, i);
 
 		for (size_type j=0; j<J_data.size(); ++j){
 			// Identify pressure dof corresponding to junction node

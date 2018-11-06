@@ -537,12 +537,11 @@ problemHT::assembly_mat(void)
 		sparse_matrix_type Bhi(mf_Hi[i].nb_dof(),mf_Hi[i].nb_dof());clear(Bhi);
 		sparse_matrix_type Dhi(mf_Hi[i].nb_dof(),mf_Hi[i].nb_dof());clear(Dhi);
 		
-		vector_type Uvi_prova( mf_Uvi[i].nb_dof()); gmm::clear(Uvi_prova);
  		vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
-		gmm::copy(Uvi, Uvi_prova);
+
 		//Obtain the radius of branch i
-		scalar_type Ri = param.R(mimv, i);
+		//scalar_type Ri = param.R(mimv, i);
 		//scalar_type Ri = param.Ri(i);
 		vector_type R_veci(mf_coefvi[i].nb_dof()); gmm::clear(R_veci);
 		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
@@ -554,10 +553,9 @@ problemHT::assembly_mat(void)
 			}
 		}
 		//Obtain the flow in the branch i
-		gmm::scale(Uvi,pi*Ri*Ri);
+		//gmm::scale(Uvi,pi*Ri*Ri);
 		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
-			Uvi_prova[k] *= areai[k];
-			cout << "Uvi prova =  " << Uvi_prova[k] << ",  Uvi = "<<Uvi[k]<< " R " << R_veci[k] << endl;
+			Uvi[k] *= areai[k];
 		}
 		cout << endl;
 		// Allocate temp local tangent versor
@@ -567,7 +565,7 @@ problemHT::assembly_mat(void)
 		// Build Bhi
 	
 		asm_advection_hematocrit(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
-								mf_coefvi[i], Uvi_prova, R_veci,
+								mf_coefvi[i], Uvi, R_veci,
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
 		
 		// cout << "---> --> --> --> versore tangente ematocrito ramo.."<< i << ": ..." << param.lambday(i) << endl;
@@ -610,7 +608,7 @@ problemHT::assembly_mat(void)
 		scalar_type dim = PARAM.real_value("d", "characteristic length of the problem [m]");
 		dim=dim*1E6; // unit of measure in Pries formula is micrometers
 
-		asm_hematocrit_junctions(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi,mf_coefv, Jv_HT, param.R(),UM_HT,dim, AM_HT);
+		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi,mf_coefv, Jv_HT, param.CSarea(),UM_HT,dim, AM_HT);
  
 		// Copy Jh
 		gmm::add(Jh,AM_HT);

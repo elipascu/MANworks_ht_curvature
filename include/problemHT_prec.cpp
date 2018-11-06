@@ -474,41 +474,40 @@ problemHT::assembly_mat(void)
 	cout << endl << "Assembling artificial diffusivity" << endl;
 	#endif
 	size_type shift_U = 0;
-        size_type shift_H = 0;
-        for(size_type i=0; i<nb_branches; ++i){
+    size_type shift_H = 0;
+    for(size_type i=0; i<nb_branches; ++i){
 		#ifdef M3D1D_VERBOSE_
-            	cout << "Branch " << i << endl;
+            cout << "Branch " << i << endl;
 		#endif
 		//Estimate maximum h for the i-th branch
-            	for(dal::bv_visitor k(meshv.region(i).index()); !k.finished();++k){
+        for(dal::bv_visitor k(meshv.region(i).index()); !k.finished();++k){
 			temp=meshv.convex_area_estimate(k,2);
 			if(temp>max_size) max_size=temp;
 		}
 		#ifdef M3D1D_VERBOSE_
-            		cout << "Maximum h: " << max_size << endl;
+            cout << "Maximum h: " << max_size << endl;
 		#endif		
 		
 		//Estimate maximum u for the i-th branch
-            	if(i>0) shift_U += mf_Uvi[i-1].nb_dof();
-            	//Obtain the vector of velocity in branch i
-            	vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
-            	gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
-            	//maximum u
-            	scalar_type max_U;
-            	scalar_type max_U_positive=*max_element(Uvi.begin(), Uvi.end());
-           	scalar_type max_U_negative=*min_element(Uvi.begin(), Uvi.end());
-            	if(max_U_positive > fabs(max_U_negative))
-                     max_U=max_U_positive;
-            	else
-                     max_U=fabs(max_U_negative);
+        if(i>0) shift_U += mf_Uvi[i-1].nb_dof();
+        //Obtain the vector of velocity in branch i
+        vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
+        gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
+        //maximum u
+        scalar_type max_U;
+        scalar_type max_U_positive=*max_element(Uvi.begin(), Uvi.end());
+        scalar_type max_U_negative=*min_element(Uvi.begin(), Uvi.end());
+        if(max_U_positive > fabs(max_U_negative))
+            max_U=max_U_positive;
+        else
+            max_U=fabs(max_U_negative);
 		#ifdef M3D1D_VERBOSE_
-            		cout << "Maximum velocity: " << max_U << endl;
+            cout << "Maximum velocity: " << max_U << endl;
 		#endif
-            	temp = max_U * max_size;
-            	if(temp> max_product) 
-			max_product=temp;
-        }
-        scalar_type Diffusivity =  max_product * Theta/2;
+        temp = max_U * max_size;
+        if(temp> max_product)  max_product=temp;
+    }
+    scalar_type Diffusivity =  max_product * Theta/2;
 
 
 
@@ -537,16 +536,30 @@ problemHT::assembly_mat(void)
 		//Obtain the vector of velocity in branch i
 		sparse_matrix_type Bhi(mf_Hi[i].nb_dof(),mf_Hi[i].nb_dof());clear(Bhi);
 		sparse_matrix_type Dhi(mf_Hi[i].nb_dof(),mf_Hi[i].nb_dof());clear(Dhi);
-
+		
+		vector_type Uvi_prova( mf_Uvi[i].nb_dof()); gmm::clear(Uvi_prova);
  		vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
-
+		gmm::copy(Uvi, Uvi_prova);
 		//Obtain the radius of branch i
 		scalar_type Ri = param.R(mimv, i);
-//scalar_type Ri = param.Ri(i);
-		vector_type R_veci(mf_coefvi[i].nb_dof(),Ri);
+		//scalar_type Ri = param.Ri(i);
+		vector_type R_veci(mf_coefvi[i].nb_dof()); gmm::clear(R_veci);
+		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
+		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+			for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+				size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+				areai[indcv_loc] = param.CSarea(j);
+				R_veci[indcv_loc] = param.R(j);
+			}
+		}
 		//Obtain the flow in the branch i
 		gmm::scale(Uvi,pi*Ri*Ri);
+		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
+			Uvi_prova[k] *= areai[k];
+			cout << "Uvi prova =  " << Uvi_prova[k] << ",  Uvi = "<<Uvi[k]<< " R " << R_veci[k] << endl;
+		}
+		cout << endl;
 		// Allocate temp local tangent versor
 			#ifdef M3D1D_VERBOSE_
 		cout << "Assembling Advection Matrix for branch n° " << i << endl;
@@ -554,7 +567,7 @@ problemHT::assembly_mat(void)
 		// Build Bhi
 	
 		asm_advection_hematocrit(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
-								mf_coefvi[i], Uvi, R_veci,
+								mf_coefvi[i], Uvi_prova, R_veci,
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
 		
 		// cout << "---> --> --> --> versore tangente ematocrito ramo.."<< i << ": ..." << param.lambday(i) << endl;
@@ -565,7 +578,10 @@ problemHT::assembly_mat(void)
 		// Build Dhi
 
 		vector_type diff(mf_coefvi[i].nb_dof(),Diffusivity);
-		gmm::scale(diff,pi*Ri*Ri);
+		//gmm::scale(diff,pi*Ri*Ri);
+		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
+			diff[k] *= areai[k];
+		}
 		asm_network_artificial_diffusion (Dhi, mimv, mf_Hi[i], mf_coefvi[i], diff, meshv.region(i));
 		// Copy Bhi and Dhi
 		gmm::scale(Dhi,1.0);
@@ -1056,7 +1072,6 @@ problemHT::solve_fixpoint(void)
 		
 		} /* end of branches loop */
 
-		cout << " errore 1 "<< endl;
 		//Update Mvv and AM matrix
 		//gmm::add(Mvv_mu,Mvv_bc,Mvv); // non ho Mvv_bc perchè faccio solo caso DIR
 		//gmm::clear(gmm::sub_matrix(AM,  // ho già pulito tutto all'inizio del while
@@ -1069,7 +1084,6 @@ problemHT::solve_fixpoint(void)
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		//gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
-		cout << " errore 3 "<< endl;
 
 
 		// update the Junction matrix Jvv and add it to the monolitic matrix
@@ -1161,10 +1175,8 @@ problemHT::solve_fixpoint(void)
 		#endif
 
 		t=clock();
-		cout << " errore 4 "<< endl;
 		U_new=problem3d1d::iteration_solve(U_old,F_new);
 		gmm::copy(U_new,UM);
-		cout << " errore 5 "<< endl;
 		// gmm::clear(UM);
 		// problem3d1d::solve_samg();
 		// gmm::copy(UM,U_new);
@@ -1292,6 +1304,8 @@ problemHT::solve_fixpoint(void)
 		//De-allocate memory
 		gmm::clear(F_LF);
 		gmm::clear(U_new); gmm::clear(auxCM); gmm::clear(F_new); gmm::clear(H_new);
+		gmm::clear(auxOSt);
+		gmm::clear(auxOSv);
 	} //Exit the while
 	
 

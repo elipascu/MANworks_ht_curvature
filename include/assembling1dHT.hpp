@@ -190,7 +190,7 @@ asm_hematocrit_junctions
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
-				//qui devo mettere l'area, che per� cambia elemento per elemento, cio� lungo le righe
+				//qui devo mettere l'area, che per� cambia elemento per elemento, cio� lungo le righe
 				// vorrei recuperare l'area in base al valore della riga
 				J(row, i*mf_h[i].nb_dof()+first_) += pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2*Ri*dim;
@@ -366,7 +366,7 @@ for (size_type i=0; i < mf_h.size(); i++) {
 
 			for (getfem::mr_visitor mrv(mf_u[i].linked_mesh().region(i)); !mrv.finished(); ++mrv)
 			for (auto ub : mf_u[i].ind_basic_dof_of_element(mrv.cv()))
-			{dofu_enum.emplace_back(ub);
+				{dofu_enum.emplace_back(ub);
 				fine_u++;}
 			for (getfem::mr_visitor mrv(mf_h[i].linked_mesh().region(i)); !mrv.finished(); ++mrv)
 			for (auto b : mf_h[i].ind_basic_dof_of_element(mrv.cv()))
@@ -378,9 +378,10 @@ for (size_type i=0; i < mf_h.size(); i++) {
 			size_type first_u=dofu_enum[0];
 			size_type first=dof_enum[0];
 
-		if (U[i*mf_u[i].nb_dof()+last_u]>0)
-	M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];	else
-	M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];
+		if (U[i*mf_u[i].nb_dof()+last_u]>0)  // se la velocità alla fine del ramo è positiva, ho outflow alla fine
+			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];	
+		else  // se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
+			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];
 
 	} /*end of for cicle*/
 

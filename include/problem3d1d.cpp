@@ -1708,9 +1708,7 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
                 gmm::copy(U_old_gm,U_new);
 	} // end of if for GMRES
 	else if ( descr.SOLVE_METHOD == "SuperLU" ){ 	//Solving with SuperLU method
-		cout << " entro nell'if del SuperLU " << endl;
  		gmm::SuperLU_solve(A, U_new, F_N, cond);
-		cout << " end of SuperLU_solve " << endl;
  	}
 	//--------------------------------------
 	

@@ -541,8 +541,10 @@ problemHT::assembly_mat(void)
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
 
 		//Obtain the radius of branch i
-		//scalar_type Ri = param.R(mimv, i);
+		scalar_type Ri = param.R(mimv, i);
 		//scalar_type Ri = param.Ri(i);
+		vector_type R_veci(mf_coefvi[i].nb_dof(), Ri); 		
+		/*
 		vector_type R_veci(mf_coefvi[i].nb_dof()); gmm::clear(R_veci);
 		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
 		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
@@ -551,12 +553,12 @@ problemHT::assembly_mat(void)
 				areai[indcv_loc] = param.CSarea(j);
 				R_veci[indcv_loc] = param.R(j);
 			}
-		}
+		}*/
 		//Obtain the flow in the branch i
-		//gmm::scale(Uvi,pi*Ri*Ri);
-		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
+		gmm::scale(Uvi,pi*Ri*Ri);
+		/*for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
 			Uvi[k] *= areai[k];
-		}
+		}*/
 		cout << endl;
 		// Allocate temp local tangent versor
 			#ifdef M3D1D_VERBOSE_
@@ -576,10 +578,10 @@ problemHT::assembly_mat(void)
 		// Build Dhi
 
 		vector_type diff(mf_coefvi[i].nb_dof(),Diffusivity);
-		//gmm::scale(diff,pi*Ri*Ri);
-		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
+		gmm::scale(diff,pi*Ri*Ri);
+		/*for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
 			diff[k] *= areai[k];
-		}
+		}*/
 		asm_network_artificial_diffusion (Dhi, mimv, mf_Hi[i], mf_coefvi[i], diff, meshv.region(i));
 		// Copy Bhi and Dhi
 		gmm::scale(Dhi,1.0);
@@ -608,11 +610,11 @@ problemHT::assembly_mat(void)
 		scalar_type dim = PARAM.real_value("d", "characteristic length of the problem [m]");
 		dim=dim*1E6; // unit of measure in Pries formula is micrometers
 
-		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi,mf_coefv, Jv_HT, param.CSarea(),UM_HT,dim, AM_HT);
- 
+		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.CSarea(),UM_HT,dim, AM_HT);
+		//asm_hematocrit_junctions(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.R(),UM_HT,dim, AM_HT);
+		cout << " esco da asm junctions  " << endl;
 		// Copy Jh
 		gmm::add(Jh,AM_HT);
-
 
 
 }
@@ -1306,7 +1308,8 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(auxOSv);
 	} //Exit the while
 	
-
+	cout << " hematocrit values  "<< endl;
+	for (size_type i=0; i< UM_HT.size(); i++) cout << " UM_HT["<<i<<"] =  "<< UM_HT[i] << endl;
 
 	gmm::copy(U_old,UM);
 

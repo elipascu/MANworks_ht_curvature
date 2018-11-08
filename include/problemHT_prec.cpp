@@ -611,7 +611,7 @@ problemHT::assembly_mat(void)
 		scalar_type dim = PARAM.real_value("d", "characteristic length of the problem [m]");
 		dim=dim*1E6; // unit of measure in Pries formula is micrometers
 
-		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.CSarea(),UM_HT,dim, AM_HT);
+		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.CSarea(), param.R(), UM_HT,dim, AM_HT);
 		//asm_hematocrit_junctions(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.R(),UM_HT,dim, AM_HT);
 		cout << " esco da asm junctions  " << endl;
 		// Copy Jh
@@ -643,7 +643,8 @@ problemHT::assembly_rhs(void)
  	vector_type Uv( dof.Uv()); gmm::clear(Uv);
 	gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())),  Uv);
 
-	asm_HT_bc (AM_HT, FM_HT, mimv, mf_Hi, mf_coefv, bcoef, BCv_HT, param.R());
+	//asm_HT_bc (AM_HT, FM_HT, mimv, mf_Hi, mf_coefv, bcoef, BCv_HT, param.R());
+	asm_HT_bc_rvar (AM_HT, FM_HT, mimv, mf_Hi, mf_coefv, bcoef, BCv_HT, param.CSarea());
 
 	gmm::clear(beta);
 
@@ -770,6 +771,8 @@ problemHT::solve_fixpoint(void)
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
 	scalar_type U_  = PARAM.real_value("U", "characteristic flow speed in the capillary bed [m/s]");
+	vector_type R_und = param.R();
+	vector_type h_und(mf_coefv.nb_dof());
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -1028,6 +1031,8 @@ problemHT::solve_fixpoint(void)
 			vector_type ciD(mf_coefvi[i].nb_dof());
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+
+					// qui chiamo la funzione, calcolo il coefficiente che mi basta avere come scalar type. devo aggiornare la posizione j delle aree e dei raggi
 					scalar_type area_el = param.CSarea(j);
 					scalar_type per_el = param.CSper(j);
 					// works only for P0 coefficients
@@ -1195,9 +1200,10 @@ problemHT::solve_fixpoint(void)
 		cout << "Solving the hematocrit problem - Iteration "<< iteration << "..." << endl;
 		#endif
 		assembly();
-		cout << " fine assembly  "<<endl;
-		H_new=iteration_solve(H_old, FM_HT);
-		cout << " fine solve hematocrit  "<<endl;
+
+	
+		H_new=iteration_solve(H_old, FM_HT);                               // HEMATOCRIT SOLVE
+		cout << " H new size "<< H_new.size() << endl;
 
 		//f-compute TFR
 		//g-compute lymphatic total flow rate

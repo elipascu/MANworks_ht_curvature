@@ -302,6 +302,7 @@ asm_hematocrit_junctions_rvar
 	 const mesh_fem & mf_datau,
 	 const std::vector<getfem::node> & J_data,
 	 const VEC & area,
+	 const VEC & radius,
 	 const VEC & H_old,
 	scalar_type dim,
 	MAT & M
@@ -349,10 +350,12 @@ asm_hematocrit_junctions_rvar
 				{dofu_enum.emplace_back(ub);
 				fine_u++;}			
 			vector_type areai;
+			vector_type radiusi;
 			for (getfem::mr_visitor mrv(mf_datau.linked_mesh().region(i)); !mrv.finished(); ++mrv)
 			for (auto ab : mf_datau.ind_basic_dof_of_element(mrv.cv()))
 				{
 				areai.emplace_back(area[ab]);
+				radiusi.emplace_back(radius[ab]);
 				fine_a++;}
 			first_=dof_enum[0];
 			last_=dof_enum[fine-1];
@@ -364,16 +367,17 @@ asm_hematocrit_junctions_rvar
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+last_) += sqrt(areai[fine_a-1]/pi)*2*dim;
+				Diameters(row, i*mf_h[i].nb_dof()+last_) += radiusi[fine_a-1]*2*dim; // in case of buckling the value is the hydraulic radius
 				//cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) <<endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += areai[0]*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+first_) += sqrt(areai[0]/pi)*2*dim;
+				Diameters(row, i*mf_h[i].nb_dof()+first_) += radiusi[0]*2*dim; 
 				//cout << " secondo if diameters  = " << Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 			gmm::clear(areai);
+			gmm::clear(radiusi);
 		}
 	}
 
@@ -457,9 +461,8 @@ for (size_type bc=0; bc < BC.size(); bc++) {
 			shift=0;
 			size_type i = abs(BC[bc].branches[0]);
 			if(i!=0)
-			for(size_type j=0; j<i; j++)
-			{
-			shift = shift+mf_h[j].nb_dof();
+			for(size_type j=0; j<i; j++) {
+				shift = shift+mf_h[j].nb_dof();
 			}
 			sparse_matrix_type Mi(mf_h[i].nb_dof(),mf_h[i].nb_dof());
 			gmm::copy(gmm::sub_matrix(M, 
@@ -495,6 +498,7 @@ for (size_type bc=0; bc < BC.size(); bc++) {
 
 			MAT Mi_mix(mf_h[i].nb_dof(), mf_h[i].nb_dof());
 			VEC BETA(mf_data.nb_dof(), beta*pi*Ri*Ri);
+			cout << " mf_data.nb_dof " << mf_data.nb_dof() << endl;
 			getfem::asm_mass_matrix_param(Mi_mix,
 				mim, mf_h[i],mf_data, BETA, BC[bc].rg);
 			
@@ -526,6 +530,95 @@ for (size_type bc=0; bc < BC.size(); bc++) {
 
 	} /*end of for cicle*/
 }/* end of asm_HT_bc*/
+
+
+template<typename MAT, typename VEC>
+void
+asm_HT_bc_rvar
+	(MAT & M, VEC & F,
+	 const mesh_im & mim,
+	 const std::vector<mesh_fem> & mf_h,
+	 const mesh_fem & mf_data,
+	 const scalar_type beta,
+	const std::vector<getfem::node> &  BC, 
+	const VEC & area
+	 ) 
+{
+size_type shift=0;
+for (size_type bc=0; bc < BC.size(); bc++) { 
+			shift=0;
+			size_type i = abs(BC[bc].branches[0]);
+			if(i!=0)
+			for(size_type j=0; j<i; j++) {
+				shift = shift+mf_h[j].nb_dof();
+			}
+			sparse_matrix_type Mi(mf_h[i].nb_dof(),mf_h[i].nb_dof());
+			gmm::copy(gmm::sub_matrix(M, 
+					gmm::sub_interval(shift, mf_h[i].nb_dof()),
+					gmm::sub_interval(shift, mf_h[i].nb_dof())), Mi);
+			vector_type Fi(mf_h[i].nb_dof()) ;	
+	
+		if (BC[bc].label=="DIR") { // Dirichlet BC
+
+			// Add Hin contribution to F -> F(0)=DIR
+
+			vector_type BC_temp(mf_h[i].nb_dof(),BC[bc].value);
+
+			getfem::assembling_Dirichlet_condition(Mi, Fi, mf_h[i], BC[bc].rg, BC_temp);
+
+			gmm::add(Fi, 
+			  gmm::sub_vector(F, 
+					gmm::sub_interval(shift, mf_h[i].nb_dof())));
+			gmm::clear(gmm::sub_matrix(M, 
+					gmm::sub_interval(shift, mf_h[i].nb_dof()),
+					gmm::sub_interval(shift, mf_h[i].nb_dof())));
+			gmm::copy(Mi, 
+			  gmm::sub_matrix(M, 
+					gmm::sub_interval(shift, mf_h[i].nb_dof()),
+					gmm::sub_interval(shift, mf_h[i].nb_dof()))); 
+			gmm::clear(BC_temp);
+
+				
+		} /*end DIR condition*/
+		else if (BC[bc].label=="MIX") { // Robin BC
+
+
+			MAT Mi_mix(mf_h[i].nb_dof(), mf_h[i].nb_dof());
+			VEC BETA=area;
+			gmm::scale(BETA, beta);
+			getfem::asm_mass_matrix_param(Mi_mix,
+				mim, mf_h[i],mf_data, BETA, BC[bc].rg);
+			
+			gmm::add(gmm::scaled(Mi_mix, 1.0), 
+				gmm::sub_matrix(M,
+					gmm::sub_interval(shift, mf_h[i].nb_dof()),
+					gmm::sub_interval(shift, mf_h[i].nb_dof())));
+			gmm::clear(Mi_mix);
+
+			// Add p0 contribution to F
+			vector_type BC_temp_mix=area;
+			gmm::scale(BC_temp_mix, beta*BC[bc].value);
+			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(shift,mf_h[i].nb_dof())), 
+				mim, mf_h[i], mf_data, BC_temp_mix);
+			gmm::clear(BC_temp_mix);
+	
+		}
+		else if (BC[bc].label=="OUT"){
+		}
+		else if (BC[bc].label=="INT") { // Internal Node
+			GMM_WARNING1("internal node passed as boundary.");
+		}
+		else if (BC[bc].label=="JUN") { // Junction Node
+			GMM_WARNING1("junction node passed as boundary.");
+		}
+		else {
+			GMM_ASSERT1(0, "Unknown Boundary Condition"<< BC[bc].label << endl);
+		}
+
+	} /*end of for cicle*/
+}/* end of asm_HT_bc*/
+
+
 
 template<typename MAT, typename VEC>
 void
@@ -567,11 +660,11 @@ for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
 
 		if (U[i*mf_u[i].nb_dof()+last_u]>0) { // se la velocità alla fine del ramo è positiva, ho outflow alla fine
 			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];	
-			cout << " area pi rquadro  "<<pi*Ri*Ri<< "   U"<<U[i*mf_u[i].nb_dof()+last_u]<<"    primo if out   "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
+			//cout << " area pi rquadro  "<<pi*Ri*Ri<< "   U"<<U[i*mf_u[i].nb_dof()+last_u]<<"    primo if out   "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
 		}
 		else  {// se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
 			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];
-			cout << " secondo if out  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
+			//cout << " secondo if out  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
 		}
 	} /*end of for cicle*/
 
@@ -623,11 +716,11 @@ for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
 
 		if (U[i*mf_u[i].nb_dof()+last_u]>0) {  // se la velocità alla fine del ramo è positiva, ho outflow alla fine
 			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];	
-			cout << "areai  "<< areai[fine_a-1] << "   U " << U[i*mf_u[i].nb_dof()+last_u] << "    primo if out rvar  "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
+			//cout << "areai  "<< areai[fine_a-1] << "   U " << U[i*mf_u[i].nb_dof()+last_u] << "    primo if out rvar  "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
 		}
 		else { // se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
 			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=areai[0]*U[i*mf_u[i].nb_dof()+first_u];
-			cout << " secondo if out rvar  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
+			//cout << " secondo if out rvar  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
 		}
 		gmm::clear(areai);
 

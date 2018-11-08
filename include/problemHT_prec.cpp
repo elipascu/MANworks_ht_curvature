@@ -603,8 +603,8 @@ problemHT::assembly_mat(void)
 
 	} /* end of branches loop */
 
-		asm_HT_out(AM_HT, mimv, mf_Hi, Uv, param.R(), mf_Uvi, mf_coefv);
-
+		//asm_HT_out(AM_HT, mimv, mf_Hi, Uv, param.R(), mf_Uvi, mf_coefv);
+		asm_HT_out_rvar(AM_HT, mimv, mf_Hi, Uv, param.CSarea(), mf_Uvi, mf_coefv);
 			#ifdef M3D1D_VERBOSE_
 		cout << "Assembling Hematocrit Junctions..."<< endl;
 			#endif

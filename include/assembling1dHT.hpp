@@ -540,10 +540,10 @@ asm_HT_out
 {
 size_type shift=0;
 size_type shift_u=0;
-for (size_type i=0; i < mf_h.size(); i++) { 
+for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
 			if(i!=0){
-			shift = shift+mf_h[i-1].nb_dof();
-			shift_u=shift_u+mf_u[i-1].nb_dof();
+				shift = shift+mf_h[i-1].nb_dof();
+				shift_u=shift_u+mf_u[i-1].nb_dof();
 			}
 
 			scalar_type Ri=compute_radius( mim, mf_data_u,radius, i);		
@@ -565,14 +565,76 @@ for (size_type i=0; i < mf_h.size(); i++) {
 			size_type first_u=dofu_enum[0];
 			size_type first=dof_enum[0];
 
-		if (U[i*mf_u[i].nb_dof()+last_u]>0)  // se la velocità alla fine del ramo è positiva, ho outflow alla fine
+		if (U[i*mf_u[i].nb_dof()+last_u]>0) { // se la velocità alla fine del ramo è positiva, ho outflow alla fine
 			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];	
-		else  // se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
+			cout << " area pi rquadro  "<<pi*Ri*Ri<< "   U"<<U[i*mf_u[i].nb_dof()+last_u]<<"    primo if out   "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
+		}
+		else  {// se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
 			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];
+			cout << " secondo if out  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
+		}
+	} /*end of for cicle*/
+
+}/* end of asm_HT_out*/
+
+template<typename MAT, typename VEC>
+void
+asm_HT_out_rvar
+	(MAT & M,
+	 const mesh_im & mim,
+	 const std::vector<mesh_fem> & mf_h,
+	const VEC & U, const VEC & area,
+	 const std::vector<mesh_fem> & mf_u,
+	 const mesh_fem & mf_data_u
+	) 
+{
+size_type shift=0;
+size_type shift_u=0;
+for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
+			if(i!=0){
+				shift = shift+mf_h[i-1].nb_dof();
+				shift_u=shift_u+mf_u[i-1].nb_dof();
+			}
+	
+			size_type fine_u=0, fine=0, fine_a=0;
+			vector_type dofu_enum; gmm::clear(dofu_enum);
+			vector_type dof_enum; gmm::clear(dof_enum);
+
+			for (getfem::mr_visitor mrv(mf_u[i].linked_mesh().region(i)); !mrv.finished(); ++mrv)
+			for (auto ub : mf_u[i].ind_basic_dof_of_element(mrv.cv()))
+				{dofu_enum.emplace_back(ub);
+				fine_u++;}
+			for (getfem::mr_visitor mrv(mf_h[i].linked_mesh().region(i)); !mrv.finished(); ++mrv)
+			for (auto b : mf_h[i].ind_basic_dof_of_element(mrv.cv()))
+				{dof_enum.emplace_back(b);
+				fine++;}
+
+			size_type last_u=dofu_enum[fine_u-1];
+			size_type last=dof_enum[fine-1];
+			size_type first_u=dofu_enum[0];
+			size_type first=dof_enum[0];
+			vector_type areai;
+			for (getfem::mr_visitor mrv(mf_data_u.linked_mesh().region(i)); !mrv.finished(); ++mrv)
+			for (auto ab : mf_data_u.ind_basic_dof_of_element(mrv.cv()))
+				{
+				areai.emplace_back(area[ab]);
+				//cout << " asm out   areai " << areai[fine_a] << endl;
+				fine_a++;}
+
+		if (U[i*mf_u[i].nb_dof()+last_u]>0) {  // se la velocità alla fine del ramo è positiva, ho outflow alla fine
+			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];	
+			cout << "areai  "<< areai[fine_a-1] << "   U " << U[i*mf_u[i].nb_dof()+last_u] << "    primo if out rvar  "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
+		}
+		else { // se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
+			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=areai[0]*U[i*mf_u[i].nb_dof()+first_u];
+			cout << " secondo if out rvar  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
+		}
+		gmm::clear(areai);
 
 	} /*end of for cicle*/
 
 }/* end of asm_HT_out*/
+
 
 //! Build the mass matrices for the 1D Poiseuille's problem updated in iterations
 //! @f$ M = \int_{\Lambda} c~u~v~ds @f$ and

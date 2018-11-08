@@ -13,6 +13,8 @@
 # ==================================================================== 
 include ../config.mk
 
+DEBUG=yes
+
 CPPFLAGS=-I. -I$(mkGetfemInc) -I$(mkBoostInc)
 CXXFLAGS+=-std=c++14
 ifeq ($(WITH_SAMG), 1)

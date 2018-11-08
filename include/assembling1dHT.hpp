@@ -81,6 +81,41 @@ generic_assembly
 
 template<typename MAT, typename VEC>
 void 
+asm_advection_hematocrit_rvar
+	(MAT & D,
+	 const mesh_im & mim,
+	 const mesh_fem & mf_h,
+	 const mesh_fem & mf_u,
+	 const mesh_fem & mf_data,
+	 const VEC & U, const VEC & A,
+	 const VEC & lambdax, const VEC & lambday, const VEC & lambdaz,
+	 const mesh_region & rg = mesh_region::all_convexes()
+	 ) 	
+	 
+	 {
+generic_assembly 
+	assem("l1=data$1(#2); l2=data$2(#2); l3=data$3(#2); u=data$4(#3); a=data$5(#2);"
+		  "t=comp(Grad(#1).Base(#1).Base(#2).Base(#2).Base(#3));"
+		  "M$1(#1,#1)+=t(:,1,:,i,i,p).l1(i).a(i).u(p) +t(:,2,:,i,i,p).l2(i).a(i).u(p)+t(:,3,:,i,i,p).l3(i).a(i).u(p);"); //.u(p)
+
+
+	assem.push_mi(mim);
+	assem.push_mf(mf_h);
+	assem.push_mf(mf_data);
+	assem.push_mf(mf_u);
+	assem.push_data(lambdax);
+	assem.push_data(lambday);
+	assem.push_data(lambdaz);
+	assem.push_data(U);
+	assem.push_data(A);
+	assem.push_mat(D);
+	assem.assembly(rg);
+
+
+} /*end asm_advection_hematocrit_rvar */
+
+template<typename MAT, typename VEC>
+void 
 asm_network_artificial_diffusion
 	(MAT & D,
 	 const mesh_im & mim,
@@ -330,13 +365,13 @@ asm_hematocrit_junctions_rvar
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+last_) += sqrt(areai[fine_a-1]/pi)*2*dim;
-				cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) <<endl;
+				//cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) <<endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += areai[0]*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+first_) += sqrt(areai[0]/pi)*2*dim;
-				cout << " secondo if diameters  = " << Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
+				//cout << " secondo if diameters  = " << Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 			gmm::clear(areai);
 		}
@@ -359,7 +394,7 @@ asm_hematocrit_junctions_rvar
 			{
 			if (Jq[n][k]>0)
 				{	gmm::copy(gmm::mat_row(Jq,n), row_vec);
-				cout << " entro nell'if con n  "<< n << endl;
+				//cout << " entro nell'if con n  "<< n << endl;
 				int mycount=count_if(row_vec.begin(), row_vec.end(), isPositive);
 					if(mycount==2){  // if there are two positive terms then it's a junction and there must be a father with negative term (inflow)
 						cout << " my count = 2 con  n  "<< n<< endl;
@@ -372,7 +407,7 @@ asm_hematocrit_junctions_rvar
 								}
 							scalar_type H_f=H_old[position];
 							scalar_type FQB=Jq[n][k];
-							cout << " value   "<< value << endl;
+							//cout << " value   "<< value << endl;
 						    FQB=FQB/value*(-1);  // flow fraction:  outflow / the father
 							scalar_type D_f=Diameters[n][position];
 							scalar_type D=Diameters[n][k];
@@ -384,16 +419,15 @@ asm_hematocrit_junctions_rvar
 								value=row_vec[pos_2];
 								}
 					scalar_type D_2=Diameters[n][pos_2];
-					cout << " D_f  " << D_f << "     D    " << D << "      D_2   " << D_2 << endl;
+					//cout << " D_f  " << D_f << "     D    " << D << "      D_2   " << D_2 << endl;
 					scalar_type FQE=fractional_Erythrocytes(FQB, D_f, D, D_2, H_f); // given flow fraction, diameters and hematocrit in the father, it gives back QH/Q_fH_f
-					cout << " entro in erythrocytes?   " << endl;
+					//cout << " entro in erythrocytes?   " << endl;
 					gmm::clear(row_vec);
 					row_vec[position]=Jq[n][position]*FQE; // modifico inflow della jun e metto a zero il resto
 					gmm::copy(row_vec,gmm::mat_row(Jh,k));
-					cout << "fine if "<<endl;
 					}
 					else{
-					cout << "entro nell'else  " << endl;
+					//cout << "entro nell'else  " << endl;
 					row_vec[k]=0;
 					gmm::copy(row_vec,gmm::mat_row(Jh,k));
 					}

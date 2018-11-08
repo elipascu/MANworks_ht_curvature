@@ -434,7 +434,7 @@ problemHT::assembly_mat(void)
 	// Junction compatibility matrix for the hematocrit problem
 	sparse_matrix_type Jh(dofHT.H(), dofHT.H());
 	sparse_matrix_type Jvv(dof.Pv(), dofHT.H());
-
+	cout << " dof HT  "<< dofHT.H() << endl;
 	
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Bh and Jh ..." << endl;
@@ -539,35 +539,36 @@ problemHT::assembly_mat(void)
 		
  		vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
-
+		vector_type Uvi_p( mf_Uvi[i].nb_dof()); gmm::clear(Uvi_p);
+		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi_p);
 		//Obtain the radius of branch i
 		scalar_type Ri = param.R(mimv, i);
 		//scalar_type Ri = param.Ri(i);
 		vector_type R_veci(mf_coefvi[i].nb_dof(), Ri); 		
-		/*
-		vector_type R_veci(mf_coefvi[i].nb_dof()); gmm::clear(R_veci);
+		
 		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
 		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 			for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 				size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 				areai[indcv_loc] = param.CSarea(j);
-				R_veci[indcv_loc] = param.R(j);
+				//R_veci[indcv_loc] = param.R(j);
 			}
-		}*/
+		}
 		//Obtain the flow in the branch i
 		gmm::scale(Uvi,pi*Ri*Ri);
-		/*for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
-			Uvi[k] *= areai[k];
-		}*/
+
 		cout << endl;
 		// Allocate temp local tangent versor
 			#ifdef M3D1D_VERBOSE_
 		cout << "Assembling Advection Matrix for branch n° " << i << endl;
 			#endif
 		// Build Bhi
-	
-		asm_advection_hematocrit(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
+		/*asm_advection_hematocrit(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
 								mf_coefvi[i], Uvi, R_veci,
+									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
+		*/
+		asm_advection_hematocrit_rvar(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
+								mf_coefvi[i], Uvi_p, areai,
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
 		
 		// cout << "---> --> --> --> versore tangente ematocrito ramo.."<< i << ": ..." << param.lambday(i) << endl;
@@ -578,10 +579,10 @@ problemHT::assembly_mat(void)
 		// Build Dhi
 
 		vector_type diff(mf_coefvi[i].nb_dof(),Diffusivity);
-		gmm::scale(diff,pi*Ri*Ri);
-		/*for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
+		//gmm::scale(diff,pi*Ri*Ri);
+		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
 			diff[k] *= areai[k];
-		}*/
+		}
 		asm_network_artificial_diffusion (Dhi, mimv, mf_Hi[i], mf_coefvi[i], diff, meshv.region(i));
 		// Copy Bhi and Dhi
 		gmm::scale(Dhi,1.0);
@@ -629,7 +630,7 @@ problemHT::assembly_rhs(void)
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Initializing RHS for FM_HT ..." << endl;
 	#endif
-
+	cout<<" assembly rhs "<<endl;
 	// Coefficients for BCs
 	scalar_type bcoef  = PARAM.real_value("BETA_H", "Coefficient for mixed BC of Ht");
 
@@ -664,11 +665,11 @@ problemHT::iteration_solve(vector_type U_O,vector_type F_N){
 	scalar_type cond;
 	vector_type U_new;
 	gmm::resize(U_new, dofHT.H()); gmm::clear(U_new);
-
+	cout << " prima del superlu solve "<< endl;
 	//Solving with SuperLU method
 	gmm::SuperLU_solve(A_HT, U_new, F_N, cond);
 	//cout << "Old Ht is " << gmm::sub_vector(U_O, gmm::sub_interval(dof.Ut(), dof.Pt())) << endl;
-
+	cout << " dopo superlu solve "<< endl;
 	//UNDER-RELAXATION
 	if(alfa!=1){
 	gmm::scale(U_new,alfa);
@@ -916,9 +917,14 @@ problemHT::solve_fixpoint(void)
 	gmm::clean(AM_HT, 1E-12);
 	gmm::copy(AM_HT, A_HT);
 	scalar_type cond;
+
+	cout << gmm::mat_nrows(AM_HT) << "  AM_HT  "<< gmm::mat_ncols(AM_HT)<< endl;
+	cout << UM_HT.size() << "  UM_HT  "<< endl;
+	cout << FM_HT.size() << "  FM_HT " << endl;
 	//Solving with SuperLU method
 	gmm::SuperLU_solve(A_HT, UM_HT, FM_HT, cond);
 
+	cout << " errore dopo superlu  " << endl;
 	#ifdef M3D1D_VERBOSE_
 	cout << "Solved the initial guess for hematocrit" << endl;
 	#endif
@@ -926,8 +932,8 @@ problemHT::solve_fixpoint(void)
 	gmm::copy(UM_HT,H_old);
 
 
-
-
+	cout << " copy riga 932 "<< H_old.size()<<endl;
+	cout << " errore dopo copy e prima del while " << endl;
 
 	//4- Iterative Process
 	while(RK && iteration < max_iteration){
@@ -1043,7 +1049,7 @@ problemHT::solve_fixpoint(void)
 				// cout << "mui[j]" <<mui[j] << endl;
 			}*/
 		
-
+			cout << " errore dopo coeff cim e cid " << endl;
 			// Allocate temp local matrices
 			// cout << "-------- entra Mvv_mui "<< endl;
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
@@ -1085,7 +1091,7 @@ problemHT::solve_fixpoint(void)
 		//gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
 
-
+		cout << " errore prima di Jvv  "<< endl;
 		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
 		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
@@ -1099,10 +1105,10 @@ problemHT::solve_fixpoint(void)
 				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
 		gmm::clear(Jvv);
-		
+		cout << " errore dopo Jvv " << endl;
 		// update the exchange matrices Bvv, Bvt, Btv, Btt
-		sparse_matrix_type Btt(dof.Pt(), dof.Ut());
-		sparse_matrix_type Bvt(dof.Pv(), dof.Ut());
+		sparse_matrix_type Btt(dof.Pt(), dof.Pt());
+		sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
 		sparse_matrix_type Btv(dof.Pt(), dof.Pv());
 		sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 
@@ -1130,7 +1136,7 @@ problemHT::solve_fixpoint(void)
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
-
+		cout << " errore dopo le B " << endl;
 		//Extracting Oncotic term				
 		picoef=sigma*(Pi_v-Pi_t);
 		gmm::copy(Ones, DeltaPi);
@@ -1189,7 +1195,9 @@ problemHT::solve_fixpoint(void)
 		cout << "Solving the hematocrit problem - Iteration "<< iteration << "..." << endl;
 		#endif
 		assembly();
+		cout << " fine assembly  "<<endl;
 		H_new=iteration_solve(H_old, FM_HT);
+		cout << " fine solve hematocrit  "<<endl;
 
 		//f-compute TFR
 		//g-compute lymphatic total flow rate

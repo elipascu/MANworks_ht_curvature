@@ -67,8 +67,10 @@ struct param3d1d {
 	// Dimensionless physical parameters (test-cases)
 	//! Dimensionless average radius of the vessel network
 	scalar_type Rav_;
-	//! Dimensionaless radii of the vessel branches
+	//! Dimensionless radii of the vessel branches
 	vector_type R_;
+	//! Dimensionless thickness of the vessel branches
+	vector_type thick_;
 	//! Dimensionless radius of the vessel branches (small vector)
 	//GR vector_type Ri_;
 	//! Dimensionless areas of the cross sections
@@ -114,6 +116,10 @@ struct param3d1d {
 	vector<vector_type> lambdaz_;	
 	//! Mesh curvature
 	vector<vector_type> Curv_;
+	//! Young modulus of the vessel wall
+	scalar_type E_;
+	//! Poisson modulus of the vessel wall
+	scalar_type nu_;
 	/*! Order of velocity profile 
 		s=\frac{1}{\gamma} (\gamma + 2) (1+(\frac{r}{R})^{\gamma})
 		if \gamma=2 we have poiseuille profile
@@ -139,6 +145,7 @@ struct param3d1d {
 		bool EXPORT_PARAM  = FILE_.int_value("EXPORT_PARAM");
 		bool LINEAR_LYMPHATIC_DRAINAGE = FILE_.int_value("LINEAR_LYMPHATIC_DRAINAGE");
 		bool IMPORT_CURVE = FILE_.int_value("CURVE_PROBLEM");
+		bool COMPLIANT_VESSELS = FILE_.int_value("COMPLIANT_VESSELS");
 
 		// Check
 		//GR gmm::resize(Ri_, n_branch);
@@ -166,9 +173,11 @@ struct param3d1d {
 
 			gmm::resize(CSper_, dof_datav);
 			gmm::resize(CSarea_, dof_datav);
+			gmm::resize(thick_, dof_datav);
 			for (size_type i=0; i < dof_datav ; i++){
 				CSarea_[i] = pi * R_[i] * R_[i];
 				CSper_[i] = 2 *pi *R_[i];	
+				thick_[i] = R_[i] / 10.0;
 				//cout << " R_["<<i<<"] = "<< R_[i]<<endl;
 				//cout << " CSarea_["<<i<<"] = "<< CSarea_[i]<<endl;
 				//cout << " CSper_["<<i<<"] = "<< CSper_[i]<<endl;
@@ -254,7 +263,9 @@ struct param3d1d {
 			pi_v_ = FILE_.real_value("Pi_v", "fluid oncotic pressure [Pa]"); 
 			sigma_ = FILE_.real_value("sigma", "reflection coefficient [-]"); 
 			Gamma_= FILE_.real_value("Gamma", "Order of velocity profile in the vessels");
-			Lp_   = FILE_.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]"); 
+			Lp_   = FILE_.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
+			E_    = FILE_.real_value("E", "Young modulus of the vessel wall [Pa]");
+			nu_   = FILE_.real_value("nu", "Poisson modulus of the vessel wall [-]");
 			if(LINEAR_LYMPHATIC_DRAINAGE)
 			{
                         Lp_LF_ = FILE_.real_value("Lp_LF", "permeability of lymphatic vessels [(m s) / kg] ");
@@ -323,9 +334,11 @@ struct param3d1d {
 	//! Get the radius at a given dof
 	inline scalar_type R  (size_type i) { return R_[i];  } const //! Get the radius at a given branch //GR inline scalar_type Ri  (size_type i) { return Ri_[i];  } const
 	//! Get the Cross Section area at a given dof
-	inline scalar_type CSarea(size_type i) { return CSarea_[i]; } const //change eli
+	inline scalar_type CSarea(size_type i) { return CSarea_[i]; } const
 	//! Get the Cross Section perimeter at a given dof
-	inline scalar_type CSper(size_type i) { return CSper_[i]; } const //change eli
+	inline scalar_type CSper(size_type i) { return CSper_[i]; } const
+	//! Get the thickness of the wall at a given dof
+	inline scalar_type thick(size_type i) { return thick_[i]; } const
 	//! Get the tissue permeability at a given dof
 	inline scalar_type kt (size_type i) { return kt_[i]; } const
 	//! Get the vessel bed permeability at a given dof
@@ -354,6 +367,8 @@ struct param3d1d {
 	vector_type & CSarea(void) { return CSarea_; }
 	//! Get the Cross Section perimeter
 	vector_type & CSper(void) { return CSper_; }
+	//! Get the thickness of vessel wall
+	vector_type & thick (void) { return thick_; }
 	//! Get the vessel wall permeabilities
 	vector_type & Q (void) { return Q_; }
 	//! Get the vessel bed permeabilities
@@ -372,8 +387,11 @@ struct param3d1d {
 	//! Get the reflection coefficient
 	inline scalar_type sigma  (void) { return sigma_; } const
 	//! Get the esponent of velocity profile
-
 	inline scalar_type Gamma (void) { return Gamma_;} const
+	//! Get Young modulus of the vessel wall
+	inline scalar_type E (void) { return E_;} const
+	//! Get Poisson modulus of the vessel wall
+	inline scalar_type nu (void) { return nu_;} const
 	//! Get vessel tangent versor x component
 	vector<vector_type> & lambdax (void) { return lambdax_; }
 	//! Get vessel tangent versor y component
@@ -392,6 +410,7 @@ struct param3d1d {
 	vector_type & Curv (size_type i) { return Curv_[i]; }
 	//! Get vessel curvature for branch i in position j
 	scalar_type & Curv (size_type i, size_type j) { return Curv_[i][j]; }
+	
 
 
 	//! Overloading of the output operator

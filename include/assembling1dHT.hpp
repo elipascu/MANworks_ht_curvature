@@ -220,13 +220,13 @@ asm_hematocrit_junctions
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+last_) += 2*Ri*dim;
+				Diameters(row, i*mf_h[i].nb_dof()+last_) += 2.0*Ri*dim;
 				cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) << endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2*Ri*dim;
+				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2.0*Ri*dim;
 				cout << " secondo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 		}
@@ -367,13 +367,13 @@ asm_hematocrit_junctions_rvar
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+last_) += radiusi[fine_a-1]*2*dim; // in case of buckling the value is the hydraulic radius
+				Diameters(row, i*mf_h[i].nb_dof()+last_) += radiusi[fine_a-1]*2.0*dim; // in case of buckling the value is the hydraulic radius
 				//cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) <<endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += areai[0]*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
-				Diameters(row, i*mf_h[i].nb_dof()+first_) += radiusi[0]*2*dim; 
+				Diameters(row, i*mf_h[i].nb_dof()+first_) += radiusi[0]*2.0*dim; 
 				//cout << " secondo if diameters  = " << Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 			gmm::clear(areai);
@@ -757,6 +757,11 @@ asm_network_poiseuilleHT
 
 }
 
+
 } /* end of namespace */
 
+
+
 #endif
+
+

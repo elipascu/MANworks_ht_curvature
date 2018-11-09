@@ -133,7 +133,15 @@ protected:
 	scalar_type calcolo_Rk(vector_type, vector_type);
 
 
-
+	void vessel_conductivity
+	(scalar_type &,
+    scalar_type &,
+    scalar_type &,
+    scalar_type &,
+    scalar_type,
+    scalar_type,
+    scalar_type,
+    scalar_type,scalar_type);
 }; /* end of class problem3d1d_HT */
 
 

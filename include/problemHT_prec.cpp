@@ -771,8 +771,6 @@ problemHT::solve_fixpoint(void)
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
 	scalar_type U_  = PARAM.real_value("U", "characteristic flow speed in the capillary bed [m/s]");
-	vector_type R_und = param.R();
-	vector_type h_und(mf_coefv.nb_dof());
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -798,11 +796,17 @@ problemHT::solve_fixpoint(void)
 	vector_type RES_H(max_iteration);
 	scalar_type epsH=descrHT.epsH;
 	scalar_type resH=epsH*100;
+
+	// vectors for deformed vessels
+	vector_type r_def = param.R();
+	vector_type area_def = param.CSarea();
+	vector_type per_def = param.CSper();
+
 // 2 - Saving the constant matrices
 	#ifdef M3D1D_VERBOSE_
 	cout << "Saving the constant matrices ... " << endl;
 	#endif
-	
+
 	// ATTENZIONE!! Potrebbero non essere costanti, una usa il raggio...
 	sparse_matrix_type Mbar(dof.Pv(), dof.Pt());
 	sparse_matrix_type Mlin(dof.Pv(), dof.Pt());
@@ -934,10 +938,6 @@ problemHT::solve_fixpoint(void)
 
 	gmm::copy(UM_HT,H_old);
 
-
-	cout << " copy riga 932 "<< H_old.size()<<endl;
-	cout << " errore dopo copy e prima del while " << endl;
-
 	//4- Iterative Process
 	while(RK && iteration < max_iteration){
 		/*
@@ -963,6 +963,19 @@ problemHT::solve_fixpoint(void)
 		size_type shift_h=0;
 		scalar_type shift_coef=0;
 		gmm::clear(MU); gmm::resize(MU, mf_coefv.nb_dof());  // MU lo riempio adesso, prima è stato solo dichiarato
+		
+		// vector of pressure to compute conductivity of the vessel
+		vector_type p_int(mf_coefv.nb_dof());
+		vector_type p_ext(mf_coefv.nb_dof());
+		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())), Pv);
+		getfem::interpolation(mf_Pv, mf_coefv, Pv, p_int, 0);
+		vector_type p_tmp(mf_Pv.nb_dof());
+		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut(), dof.Pt())), Pt);
+		gmm::mult(Mbar, Pt, p_tmp);
+		getfem::interpolation(mf_Pv, mf_coefv, p_tmp, p_ext, 0);
+		gmm::clear(p_tmp); gmm::clear(Pt); gmm::clear(Pv);
+
+
 		for(size_type i=0; i<nb_branches; ++i){
 
 			vector_type Hi(mf_Hi[i].nb_dof());
@@ -970,18 +983,14 @@ problemHT::solve_fixpoint(void)
 			scalar_type Ri = param.R(mimv, i);
 			vector_type mui; gmm::clear(mui);
 
-
 			if(i>0) shift_h += mf_Hi[i-1].nb_dof();
 			if(i>0) shift_coef += mf_coefvi[i-1].nb_dof();
 			if(i>0) shift += mf_Uvi[i-1].nb_dof();
 
-
 			gmm::copy(gmm::sub_vector(H_old, 
 				gmm::sub_interval(shift_h, mf_Hi[i].nb_dof())), Hi);
 
-			// cout << "-------- inizia interpolation" << endl;
 			getfem::interpolation(mf_Hi[i], mf_coefvi[i], Hi, H_const, 0);
-
 
 			switch(visco_v)
 				{
@@ -993,7 +1002,7 @@ problemHT::solve_fixpoint(void)
 				// cout << "-------- case 0  ---- h==0 " << endl;
 							}
 							else
-							{mui.emplace_back(viscosity_vivo(h, Ri*dim, mu_plasma));
+							{mui.emplace_back(viscosity_vivo(h, Ri*dim, mu_plasma));    // QUI GLI DEVO DARE IL RAGGIO IDRAUILICO
 				// cout << "-------- case 0  ---- h!=0 " << endl;
 				// cout << "-------- mui  ---- h!=0 "<< mui << endl; 
 							}
@@ -1030,11 +1039,12 @@ problemHT::solve_fixpoint(void)
 			vector_type ciM(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 			vector_type ciD(mf_coefvi[i].nb_dof());
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
-				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
-
+				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
+					scalar_type w = 0;
+					vessel_conductivity(w, r_def[j], area_def[j], per_def[j], param.R(j), param.thick(j), p_int[j], p_ext[j], param.Curv(i,j));
 					// qui chiamo la funzione, calcolo il coefficiente che mi basta avere come scalar type. devo aggiornare la posizione j delle aree e dei raggi
-					scalar_type area_el = param.CSarea(j);
-					scalar_type per_el = param.CSper(j);
+					scalar_type area_el = area_def[j];
+					scalar_type per_el = per_def[j];
 					// works only for P0 coefficients
 					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 					ciD[indcv_loc] = area_el;
@@ -1320,6 +1330,7 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(U_new); gmm::clear(auxCM); gmm::clear(F_new); gmm::clear(H_new);
 		gmm::clear(auxOSt);
 		gmm::clear(auxOSv);
+		gmm::clear(p_int); gmm::clear(p_ext);
 	} //Exit the while
 	
 	cout << " hematocrit values  "<< endl;
@@ -1404,5 +1415,63 @@ problemHT::export_vtk(const string & suff) //ODIFCA
 } /* end of export_vtk */
 
 
+
+void 
+problemHT::vessel_conductivity(
+	scalar_type & w,
+    scalar_type & R,
+    scalar_type & area,
+    scalar_type & per,
+    scalar_type Ru,
+    scalar_type hu,
+    scalar_type p_int,
+    scalar_type p_ext,
+	scalar_type curv)
+{	
+// leggere nu (modulo di poisson) e E (modulo di young) da file input.param
+scalar_type E = PARAM.real_value("E", "Young modulus of the vessel wall");
+scalar_type nu = PARAM.real_value("nu", "Poisson modulus of the vessel wall");
+scalar_type P_ = PARAM.real_value("P", "average interstitial pressure [Pa]");
+scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
+scalar_type e = 2.7182818284;
+
+scalar_type deltap = p_ext-p_int;
+scalar_type ratio = hu/Ru;
+scalar_type E_ = E/P_;  // dimensionless E 
+
+
+if (ratio >= 0.1){ // arteriola: rimane sezione circolare
+	scalar_type den = (Ru+hu)*(Ru+hu) - Ru*Ru;
+	scalar_type B1 = (p_int *Ru*Ru - p_ext*(Ru+hu)*(Ru+hu))/den;
+	scalar_type B2 = deltap * Ru*Ru*(Ru+hu) /den;
+	R = Ru*(1+ (1-nu)/E_ *B1 - (1+nu)/E_ *B2 /Ru /Ru);   // adimensionalized
+	area = pi*R*R;
+	per = 2.0*pi*R;
+	w = (1.0 + curv*curv*R*R);
+	}
+else {   // venula
+	scalar_type threshold;
+	threshold = 3 *E *ratio*ratio*ratio /12 /(1-nu*nu);
+	scalar_type Rtmp = Ru *(1 - Ru * (1-nu*nu) /ratio /E_ *deltap );
+	// new ratio with new thickness for buckling case???
+	if((deltap <= threshold)){   // allora rimane sezione circolare
+		R = Rtmp;
+		area = pi*R*R;
+		per = 2*pi*R;
+		w = (1.0 + curv*curv*R*R) ;
+	}
+	else{   // buckling case: negletting curvature
+		scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio;
+		scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
+		area = 15.95 * pow(e, -0.545 * p_adim);
+		per = 2* pi * Rtmp;
+		R = area /per;  //hydraulic radius
+		w = int_u_star;
+	}
+	
+}
+
+
+}
 
 } /* end of namespace */

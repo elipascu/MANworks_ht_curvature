@@ -42,6 +42,8 @@ PRINT_RESIDUALS       = 1;
 LINEAR_LYMPHATIC_DRAINAGE = 1;
 % Flag to study the hematocrit distribution all over the network (0 = constant; 1= transport)
 HEMATOCRIT_TRANSPORT = 1;
+% Flag to have compliant vessels
+COMPLIANT_VESSELS = 0;
 %===================================
 %  MESH
 %===================================
@@ -122,6 +124,10 @@ Pi_t = 2*133.32;
 sigma = 0.95;
 % Order of velocity profile in the vessels [-]
 Gamma = 2;
+% Young modulus of the vessel wall [Pa]
+E = 66E6;
+% Poisson modulus of the vessel wall [-]
+nu = 0.5;
 %=================================
 %  LYMPHATIC FLOW
 %=================================

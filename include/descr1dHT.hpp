@@ -44,6 +44,8 @@ struct descr1dHT {
 	scalar_type underH;
 	//! Flag to have hematocrit transport along the vessels
 	bool HEMATOCRIT_TRANS; 
+	//! Flag to have complinat vessels
+	bool COMPLIANT_VESSELS;
 	// Utils
 	//! File .param
 	ftool::md_param FILE_;
@@ -60,6 +62,7 @@ struct descr1dHT {
 		FEM_TYPEH   = FILE_.string_value("FEM_TYPEH","FEM 1D vessel - velocity");
 		FEM_TYPEH_DATA = FILE_.string_value("FEM_TYPEH_DATA");
 		IM_TYPEH 	= FILE_.string_value("IM_TYPEH","Name of integration method");
+		COMPLIANT_VESSELS = FILE_.int_value("COMPLIANT_VESSELS", "Flag to have compliant vessels");
 		if(FEM_TYPEH_DATA=="") FEM_TYPEH_DATA = "FEM_PK(1,0)";}
 	}
 

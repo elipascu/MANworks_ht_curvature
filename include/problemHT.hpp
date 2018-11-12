@@ -73,6 +73,8 @@ public:
 	void export_vtk (const string & suff = "");
 	//! Flag to linear or sigmoid lymphatic
 	bool HEMATOCRIT_TRANSPORT(int argc, char *argv[]);
+	//! Flag to have compliant vessels
+	bool COMPLIANT_VESSELS() {return descrHT.COMPLIANT_VESSELS;};
 
 protected:
 	//! Mesh for the hematocrit in network @f$\Lambda@f$ (1D)

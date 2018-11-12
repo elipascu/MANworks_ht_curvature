@@ -145,7 +145,6 @@ struct param3d1d {
 		bool EXPORT_PARAM  = FILE_.int_value("EXPORT_PARAM");
 		bool LINEAR_LYMPHATIC_DRAINAGE = FILE_.int_value("LINEAR_LYMPHATIC_DRAINAGE");
 		bool IMPORT_CURVE = FILE_.int_value("CURVE_PROBLEM");
-		bool COMPLIANT_VESSELS = FILE_.int_value("COMPLIANT_VESSELS");
 
 		// Check
 		//GR gmm::resize(Ri_, n_branch);

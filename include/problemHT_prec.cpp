@@ -977,10 +977,10 @@ problemHT::solve_fixpoint(void)
 		//for(size_type k=0; k<mf_coefv.nb_dof(); k++){
 		//	cout << " p_int " << p_int[k] << "  p_ext "<< p_ext[k] << " R " << param.R(k) << "  h  " << param.thick(k) << endl;
 		//}
-		
-
 		vector_type conduct_rvar(mf_coefv.nb_dof(), 0);
-		vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+		if (COMPLIANT_VESSELS()){
+			vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+		}
 		//for(size_type k=0; k<mf_coefv.nb_dof(); k++){
 		//	cout << " p_int " << p_int[k] << "  p_ext "<< p_ext[k] << " R " << param.R(k) << "  h  " << param.thick(k) << endl;
 		//}
@@ -1070,7 +1070,8 @@ problemHT::solve_fixpoint(void)
 					//ciM[indcv_loc] = 1E-6 *mui[indcv_loc] *U_ /P_ /dim *param.CSarea(j) *param.CSarea(j) *2.0*(Gamma_ +2.0) /pi 
 					//				/param.R(j) /param.R(j) /param.R(j) /param.R(j) 
 					//				* (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j));
-					ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
+					if (COMPLIANT_VESSELS()) ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
+					else ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) / mu_start * mui[indcv_loc];
 					//cout << "-------- conduct_rvar  "<<conduct_rvar[j]<< endl;;
 					Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
 				       //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;

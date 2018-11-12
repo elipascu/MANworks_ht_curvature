@@ -434,7 +434,6 @@ problemHT::assembly_mat(void)
 	// Junction compatibility matrix for the hematocrit problem
 	sparse_matrix_type Jh(dofHT.H(), dofHT.H());
 	sparse_matrix_type Jvv(dof.Pv(), dofHT.H());
-	cout << " dof HT  "<< dofHT.H() << endl;
 	
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Bh and Jh ..." << endl;
@@ -613,7 +612,7 @@ problemHT::assembly_mat(void)
 
 		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.CSarea(), param.R(), UM_HT,dim, AM_HT);
 		//asm_hematocrit_junctions(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.R(),UM_HT,dim, AM_HT);
-		cout << " esco da asm junctions  " << endl;
+
 		// Copy Jh
 		gmm::add(Jh,AM_HT);
 
@@ -630,7 +629,7 @@ problemHT::assembly_rhs(void)
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Initializing RHS for FM_HT ..." << endl;
 	#endif
-	cout<<" assembly rhs "<<endl;
+	
 	// Coefficients for BCs
 	scalar_type bcoef  = PARAM.real_value("BETA_H", "Coefficient for mixed BC of Ht");
 
@@ -666,11 +665,11 @@ problemHT::iteration_solve(vector_type U_O,vector_type F_N){
 	scalar_type cond;
 	vector_type U_new;
 	gmm::resize(U_new, dofHT.H()); gmm::clear(U_new);
-	cout << " prima del superlu solve "<< endl;
+
 	//Solving with SuperLU method
 	gmm::SuperLU_solve(A_HT, U_new, F_N, cond);
-	//cout << "Old Ht is " << gmm::sub_vector(U_O, gmm::sub_interval(dof.Ut(), dof.Pt())) << endl;
-	cout << " dopo superlu solve "<< endl;
+
+
 	//UNDER-RELAXATION
 	if(alfa!=1){
 	gmm::scale(U_new,alfa);
@@ -771,6 +770,7 @@ problemHT::solve_fixpoint(void)
 	scalar_type Lp = PARAM.real_value("Lp", "permeability of the vessel walls [m^2 s/kg]");
 	scalar_type P_  = PARAM.real_value("P", "average interstitial pressure [Pa]");
 	scalar_type U_  = PARAM.real_value("U", "characteristic flow speed in the capillary bed [m/s]");
+	scalar_type Gamma_= PARAM.real_value("Gamma", "Order of velocity profile in the vessels");
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -839,15 +839,15 @@ problemHT::solve_fixpoint(void)
 	gmm::copy(Ones, DeltaPi);
     gmm::scale(DeltaPi,picoef);
     gmm::mult(Btv,DeltaPi,auxOSt);
-    gmm::mult(Bvv,DeltaPi,auxOSv);
+    gmm::mult(B<< " mui    "<<mui[indcv_loc]v,DeltaPi,auxOSv);
 	*/
 
 	/*
-	//Extracting Mvv_kv
-	#ifdef M3D1D_VERBOSE_
-	cout << "  Assembling Mvv0 in FixPoint Hematocrit..." << endl;
+	//Extractin<< " mui    "<<mui[indcv_loc] Mvv_kv
+	#ifdef M3D1<< " mui    "<<mui[indcv_loc]_VERBOSE_
+	cout << "  << " mui    "<<mui[indcv_loc]ssembling Mvv0 in FixPoint Hematocrit..." << endl;
 	#endif	
-	// Local matrices
+	// Local ma<< " mui    "<<mui[indcv_loc]rices
 	size_type shift = 0;
 	sparse_matrix_type Mvv_mu(dof.Uv(), dof.Uv());
 	for(size_type i=0; i<nb_branches; ++i){
@@ -929,9 +929,6 @@ problemHT::solve_fixpoint(void)
 	gmm::copy(AM_HT, A_HT);
 	scalar_type cond;
 
-	cout << gmm::mat_nrows(AM_HT) << "  AM_HT  "<< gmm::mat_ncols(AM_HT)<< endl;
-	cout << UM_HT.size() << "  UM_HT  "<< endl;
-	cout << FM_HT.size() << "  FM_HT " << endl;
 	//Solving with SuperLU method
 	gmm::SuperLU_solve(A_HT, UM_HT, FM_HT, cond);  // first time it solves the hematocrit
 
@@ -977,11 +974,17 @@ problemHT::solve_fixpoint(void)
 		gmm::mult(Mbar, Pt, p_tmp);
 		getfem::interpolation(mf_Pv, mf_coefv, p_tmp, p_ext, 0);
 		gmm::clear(p_tmp); gmm::clear(Pt); gmm::clear(Pv);
-
-
+		//for(size_type k=0; k<mf_coefv.nb_dof(); k++){
+		//	cout << " p_int " << p_int[k] << "  p_ext "<< p_ext[k] << " R " << param.R(k) << "  h  " << param.thick(k) << endl;
+		//}
+		
 
 		vector_type conduct_rvar(mf_coefv.nb_dof(), 0);
-		//vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+		vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+		//for(size_type k=0; k<mf_coefv.nb_dof(); k++){
+		//	cout << " p_int " << p_int[k] << "  p_ext "<< p_ext[k] << " R " << param.R(k) << "  h  " << param.thick(k) << endl;
+		//}
+		
 		// i can update the radius here. in this case i have to create a vector for cunductivity
 		/*for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
@@ -1020,19 +1023,6 @@ problemHT::solve_fixpoint(void)
 			switch(visco_v)
 				{
 				 case(0):{ //cout << "-------- case 0 " << endl;
-					/*for (auto h : H_const)
-						{
-							if(h==0)
-							{mui.emplace_back(mu_plasma);
-				// cout << "-------- case 0  ---- h==0 " << endl;
-							}
-							else
-							{mui.emplace_back(viscosity_vivo(h, Ri*dim, mu_plasma));    // QUI GLI DEVO DARE IL RAGGIO IDRAUILICO
-				// cout << "-------- case 0  ---- h!=0 " << endl;
-				// cout << "-------- mui  ---- h!=0 "<< mui << endl; 
-							}
-						}
-						*/
 					for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 						for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 							size_type ind_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
@@ -1044,12 +1034,6 @@ problemHT::solve_fixpoint(void)
 					}
 				}break;
 				 case(1):{ //cout << "-------- case 1 " << endl;
-
-					//for (auto h : H_const){
-						//if(h==0)
-						//mui.emplace_back(mu_plasma);
-						//else
-						//mui.emplace_back(viscosity_vitro(h, Ri*dim, mu_plasma));
 						for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 							for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 								size_type ind_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
@@ -1065,13 +1049,7 @@ problemHT::solve_fixpoint(void)
 					cerr << "Invalid value for Visco_v " << visco_v << endl;
 				}
 			// cout << "-------- end switch " << endl;
-			/*size_type pos=0;
-			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
-				for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
-				{
-					MU[muu] = mui[pos];
-					pos++;}
-			*/
+
 
 			//b-modify the mass matrix for fluid dynamic problem
 			#ifdef M3D1D_VERBOSE_
@@ -1084,32 +1062,26 @@ problemHT::solve_fixpoint(void)
 			vector_type ciD(mf_coefvi[i].nb_dof());
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
-					scalar_type w = 0;
-					//vessel_conductivity(w, r_def[j], area_def[j], per_def[j], param.R(j), param.thick(j), p_int[j], p_ext[j], param.Curv(i,j));
-					// qui chiamo la funzione, calcolo il coefficiente che mi basta avere come scalar type. devo aggiornare la posizione j delle aree e dei raggi
-					scalar_type area_el = area_def[j];
-					scalar_type per_el = per_def[j];
 					// works only for P0 coefficients
 					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
-					ciD[indcv_loc] = area_el;
-					ciM[indcv_loc] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) 
-										/ mu_start * mui[indcv_loc];
-					Q_rvar[j] = per_el * Lp *P_ /U_;
+					ciD[indcv_loc] = param.CSarea(j);
+					//ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) 
+					//					/ mu_start * mui[indcv_loc];
+					//ciM[indcv_loc] = 1E-6 *mui[indcv_loc] *U_ /P_ /dim *param.CSarea(j) *param.CSarea(j) *2.0*(Gamma_ +2.0) /pi 
+					//				/param.R(j) /param.R(j) /param.R(j) /param.R(j) 
+					//				* (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j));
+					ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
+					//cout << "-------- conduct_rvar  "<<conduct_rvar[j]<< endl;;
+					Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
 				       //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
 			}
 			/*for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
 				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
-				// cout << "-------- ci  "<<ci[j]<< " ";
-				// 			cout<<" Ri"<<Ri;
-				// 			cout<<" kvi"<<kvi;
-		 		//		cout<<" ci  curv"<<param.Curv(i,j)<<endl;
-				// 	cout << "mu_start" << mu_start << endl;
-				// cout << "mui[j]" <<mui[j] << endl;
+
 			}*/
-		
-			cout << " errore dopo coeff cim e cid " << endl;
+
 			// Allocate temp local matrices
 			// cout << "-------- entra Mvv_mui "<< endl;
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
@@ -1151,7 +1123,6 @@ problemHT::solve_fixpoint(void)
 		//gmm::clear(Mvv);
 		gmm::clear(Mvv_mu);
 
-		cout << " errore prima di Jvv  "<< endl;
 		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
 		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
@@ -1165,7 +1136,6 @@ problemHT::solve_fixpoint(void)
 				gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
 		gmm::clear(Jvv);
-		cout << " errore dopo Jvv " << endl;
 		// update the exchange matrices Bvv, Bvt, Btv, Btt
 		sparse_matrix_type Btt(dof.Pt(), dof.Pt());
 		sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
@@ -1196,7 +1166,7 @@ problemHT::solve_fixpoint(void)
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())));
-		cout << " errore dopo le B " << endl;
+
 		//Extracting Oncotic term				
 		picoef=sigma*(Pi_v-Pi_t);
 		gmm::copy(Ones, DeltaPi);
@@ -1258,7 +1228,6 @@ problemHT::solve_fixpoint(void)
 
 	
 		H_new=iteration_solve(H_old, FM_HT);                               // HEMATOCRIT SOLVE
-		cout << " H new size "<< H_new.size() << endl;
 
 		//f-compute TFR
 		//g-compute lymphatic total flow rate
@@ -1528,55 +1497,63 @@ problemHT::vessel_conductivity_vec(
     vector_type p_ext)
 {	
 // leggere nu (modulo di poisson) e E (modulo di young) da file input.param
+scalar_type U_  = PARAM.real_value("U", "characteristic flow speed in the capillary bed [m/s]");
 scalar_type E = PARAM.real_value("E", "Young modulus of the vessel wall");
 scalar_type nu = PARAM.real_value("nu", "Poisson modulus of the vessel wall");
 scalar_type P_ = PARAM.real_value("P", "average interstitial pressure [Pa]");
-//scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
+scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
+scalar_type Gamma_= PARAM.real_value("Gamma", "Order of velocity profile in the vessels");
 scalar_type e = 2.7182818284;
 
-scalar_type E_ = E/P_;  // dimensionless E 
+scalar_type E_ = E/P_; cout<< "E_ " << E_ << endl; // dimensionless E 
 scalar_type R, area, per;
 
 for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 
 	for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 		for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
-			scalar_type deltap = p_ext[j] - p_int[j];
-			scalar_type ratio = hu[j]/Ru[j];
+			scalar_type deltap = p_ext[j] - p_int[j]; // cout<< "deltap " << deltap << endl;
+			scalar_type ratio = hu[j]/Ru[j];  //cout<< "ratio  " << ratio << endl;
 			size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 			if (ratio >= 0.1){ // arteriola: rimane sezione circolare
-				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];
-				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den;
-				scalar_type B2 = deltap * Ru[j]*Ru[j]*(Ru[j]+hu[j]) /den;
+				//cout << "Ru   " << Ru[j] << " hu  "<< hu[j] << endl;
+				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];  //cout<< "den " << den << endl;
+				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den; //cout<< "B1 " << B1 << endl;
+				scalar_type B2 = deltap * Ru[j]*Ru[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]) /den; //cout<< "B2 " << B2 << endl;
 				R = Ru[j]*(1+ (1-nu)/E_ *B1 - (1+nu)/E_ *B2 /Ru[j] /Ru[j]);   // adimensionalized
 				area = pi*R*R;
 				per = 2.0*pi*R;
-				cond[j] = (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
+				//cout << " R   " << R << "   "<< U_/P_ /d << "   "<< area *area <<"  "<<2.0*(Gamma_ +2.0) /pi /R /R /R /R << "   "<< param.Curv(i,indcv_loc) << endl;
+				cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
+				//cout << cond[j] << endl;
+				//cout << U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R)<<endl;
 				}
 			else {   // venula
 				scalar_type threshold;
-				threshold = 3 *E *ratio*ratio*ratio /12 /(1-nu*nu);
+				threshold = 3 *E *ratio*ratio*ratio /12.0 /(1-nu*nu);
 				scalar_type Rtmp = Ru[j] *(1 - Ru[j] * (1-nu*nu) /ratio /E_ *deltap);
-				// new ratio with new thickness for buckling case???
-				if((deltap <= threshold)){   // allora rimane sezione circolare
+				if(deltap <= threshold){   // allora rimane sezione circolare
 					R = Rtmp;
 					area = pi*R*R;
 					per = 2*pi*R;
-					cond[j] = (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R) ;
+					cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
 				}
 				else{   // buckling case: negletting curvature
+					scalar_type h_new = hu[j] * Ru[j] /Rtmp;
+					ratio = h_new/Rtmp; // update ratio
 					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio;
 					scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
 					area = 15.95 * pow(e, -0.545 * p_adim);
 					per = 2* pi * Rtmp;
 					R = area /per;  //hydraulic radius
-					cond[j] = int_u_star;
+					cond[j] = area * area /R /R /R /R /int_u_star;
 				}
 			}
 			// update the values
 			param.replace_r ( R, j);
 			param.replace_area (area, j);
 			param.replace_per (per, j);
+			//cout << " posizione  j  "<<j << "   nuovo R  "<< R << "   coeff  " << cond[j] << endl;
 		}	
 	}
 } // end branches loop

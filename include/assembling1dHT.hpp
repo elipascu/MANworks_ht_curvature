@@ -221,13 +221,13 @@ asm_hematocrit_junctions
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+last_) += 2.0*Ri*dim;
-				cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) << endl;
+				//cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) << endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2.0*Ri*dim;
-				cout << " secondo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
+				//cout << " secondo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 		}
 	}
@@ -317,7 +317,6 @@ asm_hematocrit_junctions_rvar
 		"invalid data mesh fem for pressure (k>0 required)");
 
 	sparse_matrix_type Diameters(gmm::mat_nrows(J),gmm::mat_ncols(J));
-	cout << " J data size  " << J_data.size() << endl;
 	for (size_type i=0; i<mf_h.size(); ++i){ // branch loop 
 
 		for (size_type j=0; j<J_data.size(); ++j){
@@ -401,7 +400,6 @@ asm_hematocrit_junctions_rvar
 				//cout << " entro nell'if con n  "<< n << endl;
 				int mycount=count_if(row_vec.begin(), row_vec.end(), isPositive);
 					if(mycount==2){  // if there are two positive terms then it's a junction and there must be a father with negative term (inflow)
-						cout << " my count = 2 con  n  "<< n<< endl;
 						scalar_type value=0;
 						int position=-1;
 							while (value >=0)  // look for the father

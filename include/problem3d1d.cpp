@@ -968,7 +968,6 @@ problem3d1d::solve(void)
 	gmm::clean(AM, 1E-12);
 	gmm::copy(AM, A);
 	
-	cout << "entro in problem3d1d::solve " << endl;
 
 	//gmm::clear(AM); // to be postponed for preconditioner
 	double time = gmm::uclock_sec();
@@ -1523,7 +1522,6 @@ problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
 	scalar_type cond;
 	vector_type U_new;
 	gmm::resize(U_new, dof.tot()); gmm::clear(U_new);
-	cout << " entro in prob3d1d::iteration_solve "<< endl;
 
 	//--------------------------------------	 A, U_new, F_N, cond
 	

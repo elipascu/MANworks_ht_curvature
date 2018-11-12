@@ -363,10 +363,16 @@ struct param3d1d {
 	}
 	//! Get the radius
 	vector_type & R (void) { return R_; }
+	void replace_r ( vector_type R_new){ R_ = R_new; }
+	void replace_r ( scalar_type R_new, size_type i){ R_[i] = R_new; }
 	//! Get the Cross Section area
 	vector_type & CSarea(void) { return CSarea_; }
+	void replace_area ( vector_type area_new){ CSarea_ = area_new; }
+	void replace_area ( scalar_type area_new, size_type i){ CSarea_[i] = area_new; }
 	//! Get the Cross Section perimeter
 	vector_type & CSper(void) { return CSper_; }
+	void replace_per ( vector_type per_new){ CSper_ = per_new; }
+	void replace_per ( scalar_type per_new, size_type i){ CSper_[i] = per_new; }
 	//! Get the thickness of vessel wall
 	vector_type & thick (void) { return thick_; }
 	//! Get the vessel wall permeabilities

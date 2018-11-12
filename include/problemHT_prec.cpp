@@ -801,6 +801,10 @@ problemHT::solve_fixpoint(void)
 	vector_type r_def = param.R();
 	vector_type area_def = param.CSarea();
 	vector_type per_def = param.CSper();
+	// vectors for undeformed vessels
+	vector_type r_und = param.R();
+	vector_type area_und = param.CSarea();
+	vector_type per_und = param.CSper();
 
 // 2 - Saving the constant matrices
 	#ifdef M3D1D_VERBOSE_
@@ -929,9 +933,8 @@ problemHT::solve_fixpoint(void)
 	cout << UM_HT.size() << "  UM_HT  "<< endl;
 	cout << FM_HT.size() << "  FM_HT " << endl;
 	//Solving with SuperLU method
-	gmm::SuperLU_solve(A_HT, UM_HT, FM_HT, cond);
+	gmm::SuperLU_solve(A_HT, UM_HT, FM_HT, cond);  // first time it solves the hematocrit
 
-	cout << " errore dopo superlu  " << endl;
 	#ifdef M3D1D_VERBOSE_
 	cout << "Solved the initial guess for hematocrit" << endl;
 	#endif
@@ -976,26 +979,48 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(p_tmp); gmm::clear(Pt); gmm::clear(Pv);
 
 
+
+		vector_type conduct_rvar(mf_coefv.nb_dof(), 0);
+		//vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+		// i can update the radius here. in this case i have to create a vector for cunductivity
+		/*for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
+					vessel_conductivity(conduct_rvar[j], r_und[j], param.thick(j), p_int[j], p_ext[j], param.Curv(i,j));
+					// qui chiamo la funzione, calcolo il coefficiente che mi basta avere come scalar type. devo aggiornare la posizione j delle aree e dei raggi
+					scalar_type area_el = area_def[j];
+					scalar_type per_el = per_def[j];
+					// works only for P0 coefficients
+					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+					ciD[indcv_loc] = area_el;
+					ciM[indcv_loc] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*Ri*Ri) / mu_start * mui[indcv_loc];
+					Q_rvar[j] = per_el * Lp *P_ /U_;
+				       //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
+					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
+				}
+			}
+		*/
+		// then i have to give to the viscosity finction the right radius
+
+
+
 		for(size_type i=0; i<nb_branches; ++i){
 
 			vector_type Hi(mf_Hi[i].nb_dof());
 			vector_type H_const(mf_coefvi[i].nb_dof());
-			scalar_type Ri = param.R(mimv, i);
-			vector_type mui; gmm::clear(mui);
+			//scalar_type Ri = param.R(mimv, i);
+			vector_type mui(mf_coefvi[i].nb_dof()); gmm::clear(mui);
 
 			if(i>0) shift_h += mf_Hi[i-1].nb_dof();
 			if(i>0) shift_coef += mf_coefvi[i-1].nb_dof();
 			if(i>0) shift += mf_Uvi[i-1].nb_dof();
 
-			gmm::copy(gmm::sub_vector(H_old, 
-				gmm::sub_interval(shift_h, mf_Hi[i].nb_dof())), Hi);
-
+			gmm::copy(gmm::sub_vector(H_old, gmm::sub_interval(shift_h, mf_Hi[i].nb_dof())), Hi);
 			getfem::interpolation(mf_Hi[i], mf_coefvi[i], Hi, H_const, 0);
-
+			//getfem::interpolation(mf_H, mf_coefv, H_old, H_const, 0);
 			switch(visco_v)
 				{
 				 case(0):{ //cout << "-------- case 0 " << endl;
-					for (auto h : H_const)
+					/*for (auto h : H_const)
 						{
 							if(h==0)
 							{mui.emplace_back(mu_plasma);
@@ -1007,27 +1032,46 @@ problemHT::solve_fixpoint(void)
 				// cout << "-------- mui  ---- h!=0 "<< mui << endl; 
 							}
 						}
-					}break;
+						*/
+					for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+						for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+							size_type ind_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+							scalar_type h = H_const[ind_loc];
+							if(h==0) { mui[ind_loc]=mu_plasma; }
+							else {mui[ind_loc]=viscosity_vivo(h, param.R(muu)*dim, mu_plasma); }
+							MU[muu] = mui[ind_loc];
+						}
+					}
+				}break;
 				 case(1):{ //cout << "-------- case 1 " << endl;
 
-					for (auto h : H_const)
-						{
-							if(h==0)
-							mui.emplace_back(mu_plasma);
-							else
-							mui.emplace_back(viscosity_vitro(h, Ri*dim, mu_plasma));
+					//for (auto h : H_const){
+						//if(h==0)
+						//mui.emplace_back(mu_plasma);
+						//else
+						//mui.emplace_back(viscosity_vitro(h, Ri*dim, mu_plasma));
+						for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+							for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+								size_type ind_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+								scalar_type h = H_const[ind_loc];
+								if(h==0) { mui[ind_loc]=mu_plasma; }
+								else {mui[ind_loc]=viscosity_vitro(h, param.R(muu)*dim, mu_plasma); }
+								MU[muu] = mui[ind_loc];
+							}
 						}
-						}break;
+						//}
+					}break;
 				default:
 					cerr << "Invalid value for Visco_v " << visco_v << endl;
 				}
 			// cout << "-------- end switch " << endl;
-			size_type pos=0;
+			/*size_type pos=0;
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
 				for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
 				{
 					MU[muu] = mui[pos];
 					pos++;}
+			*/
 
 			//b-modify the mass matrix for fluid dynamic problem
 			#ifdef M3D1D_VERBOSE_
@@ -1041,14 +1085,15 @@ problemHT::solve_fixpoint(void)
 			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 				for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
 					scalar_type w = 0;
-					vessel_conductivity(w, r_def[j], area_def[j], per_def[j], param.R(j), param.thick(j), p_int[j], p_ext[j], param.Curv(i,j));
+					//vessel_conductivity(w, r_def[j], area_def[j], per_def[j], param.R(j), param.thick(j), p_int[j], p_ext[j], param.Curv(i,j));
 					// qui chiamo la funzione, calcolo il coefficiente che mi basta avere come scalar type. devo aggiornare la posizione j delle aree e dei raggi
 					scalar_type area_el = area_def[j];
 					scalar_type per_el = per_def[j];
 					// works only for P0 coefficients
 					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 					ciD[indcv_loc] = area_el;
-					ciM[indcv_loc] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*Ri*Ri) / mu_start * mui[indcv_loc];
+					ciM[indcv_loc] = area_el * area_el / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) 
+										/ mu_start * mui[indcv_loc];
 					Q_rvar[j] = per_el * Lp *P_ /U_;
 				       //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
@@ -1419,9 +1464,6 @@ problemHT::export_vtk(const string & suff) //ODIFCA
 void 
 problemHT::vessel_conductivity(
 	scalar_type & w,
-    scalar_type & R,
-    scalar_type & area,
-    scalar_type & per,
     scalar_type Ru,
     scalar_type hu,
     scalar_type p_int,
@@ -1438,7 +1480,7 @@ scalar_type e = 2.7182818284;
 scalar_type deltap = p_ext-p_int;
 scalar_type ratio = hu/Ru;
 scalar_type E_ = E/P_;  // dimensionless E 
-
+scalar_type R, area, per;
 
 if (ratio >= 0.1){ // arteriola: rimane sezione circolare
 	scalar_type den = (Ru+hu)*(Ru+hu) - Ru*Ru;
@@ -1472,6 +1514,73 @@ else {   // venula
 }
 
 
-}
+} // end pf vessel_conductivity
+
+
+void 
+problemHT::vessel_conductivity_vec(
+	const mesh_fem & mf_coefv,
+	const std::vector<mesh_fem> & mf_coefvi,
+	vector_type & cond,
+    vector_type Ru,
+    vector_type hu,
+    vector_type p_int,
+    vector_type p_ext)
+{	
+// leggere nu (modulo di poisson) e E (modulo di young) da file input.param
+scalar_type E = PARAM.real_value("E", "Young modulus of the vessel wall");
+scalar_type nu = PARAM.real_value("nu", "Poisson modulus of the vessel wall");
+scalar_type P_ = PARAM.real_value("P", "average interstitial pressure [Pa]");
+//scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
+scalar_type e = 2.7182818284;
+
+scalar_type E_ = E/P_;  // dimensionless E 
+scalar_type R, area, per;
+
+for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
+
+	for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
+		for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
+			scalar_type deltap = p_ext[j] - p_int[j];
+			scalar_type ratio = hu[j]/Ru[j];
+			size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+			if (ratio >= 0.1){ // arteriola: rimane sezione circolare
+				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];
+				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den;
+				scalar_type B2 = deltap * Ru[j]*Ru[j]*(Ru[j]+hu[j]) /den;
+				R = Ru[j]*(1+ (1-nu)/E_ *B1 - (1+nu)/E_ *B2 /Ru[j] /Ru[j]);   // adimensionalized
+				area = pi*R*R;
+				per = 2.0*pi*R;
+				cond[j] = (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
+				}
+			else {   // venula
+				scalar_type threshold;
+				threshold = 3 *E *ratio*ratio*ratio /12 /(1-nu*nu);
+				scalar_type Rtmp = Ru[j] *(1 - Ru[j] * (1-nu*nu) /ratio /E_ *deltap);
+				// new ratio with new thickness for buckling case???
+				if((deltap <= threshold)){   // allora rimane sezione circolare
+					R = Rtmp;
+					area = pi*R*R;
+					per = 2*pi*R;
+					cond[j] = (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R) ;
+				}
+				else{   // buckling case: negletting curvature
+					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio;
+					scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
+					area = 15.95 * pow(e, -0.545 * p_adim);
+					per = 2* pi * Rtmp;
+					R = area /per;  //hydraulic radius
+					cond[j] = int_u_star;
+				}
+			}
+			// update the values
+			param.replace_r ( R, j);
+			param.replace_area (area, j);
+			param.replace_per (per, j);
+		}	
+	}
+} // end branches loop
+
+} // end of vessel_conductivity_vec
 
 } /* end of namespace */

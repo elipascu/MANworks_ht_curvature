@@ -135,13 +135,21 @@ protected:
 
 	void vessel_conductivity
 	(scalar_type &,
-    scalar_type &,
-    scalar_type &,
-    scalar_type &,
     scalar_type,
     scalar_type,
     scalar_type,
-    scalar_type,scalar_type);
+    scalar_type,
+	scalar_type);
+	
+	void vessel_conductivity_vec(
+		const mesh_fem & ,
+		const std::vector<mesh_fem> & ,
+		vector_type & ,
+		vector_type ,
+		vector_type ,
+		vector_type ,
+		vector_type );
+
 }; /* end of class problem3d1d_HT */
 
 

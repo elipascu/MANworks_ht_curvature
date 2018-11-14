@@ -169,7 +169,12 @@ struct param3d1d {
 			std::ifstream ist(RFILE);
 			if (!ist) cerr << "impossible to read from file " << RFILE << endl;
 			import_network_radius(R_, ist, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
-
+			for (size_type i=1; i < 9; i++ ){
+				R_[i] = R_[i-1] + 0.00007;
+			}
+			for (size_type i=9; i < 17; i++ ){
+				R_[i] = R_[i-1] - 0.00007;
+			}
 			gmm::resize(CSper_, dof_datav);
 			gmm::resize(CSarea_, dof_datav);
 			gmm::resize(thick_, dof_datav);

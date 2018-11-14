@@ -421,7 +421,7 @@ asm_network_junctions_rvar
 			// Outflow branch contribution
 			if (std::find(bb, be, i) != be) {
 				J(row, i*mf_u[i].nb_dof() + last_) -= area_loc;//col to be generalized!
-				//cout << " primo if   area_loc =  " << area_loc << endl;
+				//cout << " primo if   area_loc =  " << area_loc << "   ramo " << i << endl;
 			}
 			// Inflow branch contribution
 			// if std::find finds the element, it returns an iterator to the element
@@ -429,7 +429,7 @@ asm_network_junctions_rvar
 			// so if i=0 then it can only be inflow. if i=be, it works because it returns the iterator, not the value
 			if (i != 0 && std::find(bb, be, -i) != be) {
 				J(row, i*mf_u[i].nb_dof() + first_) += area_loc;	//col to be generalized!
-				//cout << " secondo if    area_loc =  " << area_loc << endl;
+				//cout << " secondo if    area_loc =  " << area_loc << "   ramo " << i  << endl;
 			}
 		}
 	}

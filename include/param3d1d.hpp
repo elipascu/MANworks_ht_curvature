@@ -169,12 +169,12 @@ struct param3d1d {
 			std::ifstream ist(RFILE);
 			if (!ist) cerr << "impossible to read from file " << RFILE << endl;
 			import_network_radius(R_, ist, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
-			for (size_type i=1; i < 9; i++ ){
+			/*for (size_type i=1; i < 9; i++ ){
 				R_[i] = R_[i-1] + 0.00007;
 			}
 			for (size_type i=9; i < 17; i++ ){
 				R_[i] = R_[i-1] - 0.00007;
-			}
+			}*/
 			gmm::resize(CSper_, dof_datav);
 			gmm::resize(CSarea_, dof_datav);
 			gmm::resize(thick_, dof_datav);
@@ -367,7 +367,7 @@ struct param3d1d {
 	}
 	//! Get the radius
 	vector_type & R (void) { return R_; }
-	void replace_r ( vector_type R_new){ R_ = R_new; }
+	//void replace_r ( vector_type R_new){ R_ = R_new; }
 	void replace_r ( scalar_type R_new, size_type i){ R_[i] = R_new; }
 	//! Get the Cross Section area
 	vector_type & CSarea(void) { return CSarea_; }

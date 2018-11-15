@@ -27,10 +27,10 @@ else
   OPTFLAGS=-O3 -march=native
   CPPFLAGS+=-DNDEBUG
 endif
-LDFLAGS=-L../../lib -L$(mkGetfemLib) -L$(mkBoostLib)
+LDFLAGS=-L../../lib -L$(mkGetfemLib) -L$(mkBoostLib) -L$(mkLapackLib) -L$(mkQhullLib)
 LDFLAGS += -L/opt/lib/samg/
 LIBRARIES=-lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem
-LIBRARIES += -lamg -liomp5
+LIBRARIES += -lamg -liomp5 -lblas
 
 SRCS=$(wildcard *.cpp)
 OBJS=$(SRCS:.cpp=.o)

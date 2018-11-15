@@ -1015,9 +1015,9 @@ problemHT::solve_fixpoint(void)
 						for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 							size_type ind_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 							scalar_type h = H_const[ind_loc];
-							//if(h==0) { mui[ind_loc]=mu_plasma; }
-							//else {mui[ind_loc]=viscosity_vivo(h, param.R(muu)*dim, mu_plasma); }
-							mui[ind_loc]=mu_plasma;
+							if(h==0) { mui[ind_loc]=mu_plasma; }
+							else {mui[ind_loc]=viscosity_vivo(h, param.R(muu)*dim, mu_plasma); }
+							//mui[ind_loc]=mu_plasma;
 							MU[muu] = mui[ind_loc];
 						}
 					}
@@ -1063,8 +1063,8 @@ problemHT::solve_fixpoint(void)
 					if (COMPLIANT_VESSELS()) ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
 					else ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) / mu_start * mui[indcv_loc];
 					//cout << "-------- ciM  "<<ciM[indcv_loc]<< " ----- conduct  "<< conduct_rvar[j] << "  ----- mui   " << mui[indcv_loc] << endl;
-					//Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
-				    Q_rvar[j] = per_und[j] * Lp *P_ /U_;
+					Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
+				    //Q_rvar[j] = per_und[j] * Lp *P_ /U_;
 					   //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
@@ -1123,8 +1123,8 @@ problemHT::solve_fixpoint(void)
 		*/
 		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
-		//asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
-		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, area_und);
+		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
+		//asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, area_und);
 		gmm::add(Jvv,
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
@@ -1184,8 +1184,10 @@ problemHT::solve_fixpoint(void)
 		vector_type Fv_bc(dof.Uv());
 		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
 		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
-		//asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
-		asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, area_und);
+		asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
+		//asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, area_und);
+
+		for (size_type kk = 0; kk < Fv_bc.size(); kk++)  cout<<" Fv_bc["<<kk<<"] =  "<<Fv_bc[kk]<<endl;
 
 		// RHS: tiene FM sempre uguale e aggiorna F_new. credo sia stato creato appositamente per il termine linfatico
 		gmm::copy(FM,F_new);
@@ -1229,6 +1231,8 @@ problemHT::solve_fixpoint(void)
 	
 		H_new=iteration_solve(H_old, FM_HT);                               // HEMATOCRIT SOLVE
 
+		//gmm::copy(H_old, H_new);  // io
+		
 		//f-compute TFR
 		//g-compute lymphatic total flow rate
 		//h-compute total FR going in or out the interstitial domain
@@ -1526,7 +1530,7 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 			scalar_type deltap = p_ext[j] - p_int[j]; // cout<< "deltap " << deltap << endl;
 			scalar_type ratio = hu[j]/Ru[j];  //cout<< "ratio  " << ratio << endl;
 			size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
-			if ( i!= 0){
+			if ( 1) {//i!= 0){
 			if (ratio >= 0.1){ // arteriola: rimane sezione circolare
 				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];  //cout<< "den " << den << endl;
 				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den; //cout<< "B1 " << B1 << endl;

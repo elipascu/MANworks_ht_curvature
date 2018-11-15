@@ -116,7 +116,8 @@ asm_network_poiseuille_rvar
 	generic_assembly
 		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#3);"
 			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#3));"
-			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i);");
+			"t2=comp(Base(#2).Base(#1).Base(#3).Grad(#3));"
+			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i) + t2(:,:,i,i,1).l1(i).cs(i)+t2(:,:,i,i,2).l2(i).cs(i)+t2(:,:,i,i,3).l3(i).cs(i);");
 	assem.push_mi(mim);
 	assem.push_mf(mf_u);
 	assem.push_mf(mf_p);
@@ -226,14 +227,13 @@ template<typename VEC>
 void
 asm_network_bc_rvar
 	(VEC & F,
-	 const mesh_im & mim,
-	 const std::vector<mesh_fem> & mf_u,
-	 const mesh_fem & mf_data,
-	 const std::vector<getfem::node> & BC,
-	 const VEC & P0,
-         const VEC & area
-         //,const scalar_type beta
-	 ) 
+	const mesh_im & mim,
+	const std::vector<mesh_fem> & mf_u,
+	const mesh_fem & mf_data,
+	const std::vector<getfem::node> & BC,
+	const VEC & P0,
+    const VEC & area
+	) 
 {
 	// Aux data
 	std::vector<scalar_type> ones(mf_data.nb_dof(), 1.0);
@@ -248,7 +248,7 @@ asm_network_bc_rvar
 			// Add gv contribution to Fv
 			size_type k = mf_data.linked_mesh().convex_to_point(BC[bc].idx)[0];
 			area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
-			//cout << " area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
+			cout << " asm bc   area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
 			scalar_type BCVal = BC[bc].value*area_loc;  // valore al bordo * area
 			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
 				mim, mf_u[i], mf_data, gmm::scaled(ones, BCVal), BC[bc].rg);

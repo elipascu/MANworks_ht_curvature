@@ -35,13 +35,15 @@ EXPORT_PARAM    = 1;
 % Flag to export the absolute value of vessel fluid velocity
 ABS_VEL         = 1;
 % Flag to export the real value of vessel fluid velocity (taken only if ABS_VEL = 1, otherwise it is equal to 1)
-EXPORT_REAL_VELOCITY  = 1;
+EXPORT_REAL_VELOCITY = 1;
 % Flag to print residuals of Fixed Point Method
 PRINT_RESIDUALS       = 1;
 % Flag to choose Lymphatic Drainage Curve (0 = sigmoid; 1= linear)
 LINEAR_LYMPHATIC_DRAINAGE = 1;
 % Flag to study the hematocrit distribution all over the network (0 = constant; 1= transport)
 HEMATOCRIT_TRANSPORT = 1;
+% Flag to have compliant vessels
+COMPLIANT_VESSELS = 1;
 %===================================
 %  MESH
 %===================================
@@ -74,7 +76,7 @@ FEM_TYPET   = 'FEM_RT0(3)';% Flag to enable the curve model
 FEM_TYPET_P = 'FEM_PK_DISCONTINUOUS(3,0)';
 FEM_TYPET_DATA = 'FEM_PK(3,0)';
 % GetFem type for the 1D Finite Element Methods
-FEM_TYPEV   = 'FEM_PK(1,2)';
+FEM_TYPEV   = 'FEM_PK(1,1)';
 FEM_TYPEV_P = 'FEM_PK(1,1)';
 FEM_TYPEV_DATA = 'FEM_PK(1,0)';
 FEM_TYPEH = 'FEM_PK(1,1)';
@@ -122,6 +124,10 @@ Pi_t = 2*133.32;
 sigma = 0.95;
 % Order of velocity profile in the vessels [-]
 Gamma=2;
+% Young modulus of the vessel wall [Pa]
+E = 66E4;
+% Poisson modulus of the vessel wall [-]
+nu = 0.5;
 %=================================
 %  LYMPHATIC FLOW
 %=================================

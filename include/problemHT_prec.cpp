@@ -1076,16 +1076,16 @@ problemHT::solve_fixpoint(void)
 
 			// Allocate temp local matrices
 			// cout << "-------- entra Mvv_mui "<< endl;
-
+			/*
 			sparse_matrix_type Mvv_lapi(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
-			getfem::asm_stiffness_matrix_for_laplacian(Mvv_lapi, mimv, mf_Uvi[i], coefvi[i], ciD, meshv.region(i));
+			getfem::asm_stiffness_matrix_for_laplacian(Mvv_lapi, mimv, mf_Uvi[i], mf_coefvi[i], ciD, meshv.region(i));
 			gmm::add(Mvv_lapi, 
-				gmm::sub_matrix(AM, 
-					gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()), 
-					gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()))); 
+			 	gmm::sub_matrix(AM, 
+			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()), 
+			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()))); 
 
 			gmm::clear(Mvv_lapi);
-			
+			*/
 
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
 			sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());

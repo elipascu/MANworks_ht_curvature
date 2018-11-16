@@ -177,7 +177,7 @@ import_pts_file(
 					tmpv[d++] = stof(tmp); 
 					bgeot::get_token(ist, tmp, 1023); 
 				}
-                                if (d != 4) GMM_ASSERT1(0, "Points must have 3 coordinates - number of coordinates:" << d);
+                if (d != 4) GMM_ASSERT1(0, "Points must have 3 coordinates - number of coordinates:" << d);
 				base_node tmpn(tmpv[1], tmpv[2], tmpv[3]);
 				lpoints.push_back(tmpn);
 				if (tmp.compare("END_ARC") == 0) { thend = true; Nn[Nb-1]--; }
@@ -187,7 +187,7 @@ import_pts_file(
 		// Insert the arc into the 1D mesh and build a new region for the corresponding branch
 		// Check validity of branch region
 		GMM_ASSERT1(mh1D.has_region(Nb-1)==0, "Overload in meshv region assembling!");
-	
+		
 		for (size_type i=0; i<lpoints.size()-1; ++i ) {
 			std::vector<size_type> ind(2);
 			size_type ii = (i==0) ? 0 : i+1;

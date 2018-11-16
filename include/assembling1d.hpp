@@ -114,10 +114,16 @@ asm_network_poiseuille_rvar
 	getfem::asm_mass_matrix_param(M, mim, mf_u, mf_data, coefM, rg);
 	// Build the local divergence matrix Dvvi
 	generic_assembly
+		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#2);"
+			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#2));"
+			"t2=comp(Base(#2).Base(#1).Base(#3).Grad(#2));"
+			"M$1(#2,#1)+=t(:,:,1,i,j).l1(i).cs(j)+t(:,:,2,i,j).l2(i).cs(j)+t(:,:,3,i,j).l3(i).cs(j) + t2(:,:,i,j,1).l1(i).cs(j)+t2(:,:,i,j,2).l2(i).cs(j)+t2(:,:,i,j,3).l3(i).cs(j);");
+	/*
+	generic_assembly
 		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#3);"
 			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#3));"
-			"t2=comp(Base(#2).Base(#1).Base(#3).Grad(#3));"
-			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i) + t2(:,:,i,i,1).l1(i).cs(i)+t2(:,:,i,i,2).l2(i).cs(i)+t2(:,:,i,i,3).l3(i).cs(i);");
+			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i);");
+	*/
 	assem.push_mi(mim);
 	assem.push_mf(mf_u);
 	assem.push_mf(mf_p);
@@ -125,11 +131,16 @@ asm_network_poiseuille_rvar
 	assem.push_data(lambdax);
 	assem.push_data(lambday);
 	assem.push_data(lambdaz);
-	assem.push_data(coefD);
+	vector_type ones(mf_p.nb_dof(),coefD[coefD.size()]);
+	getfem::interpolation(mf_data, mf_p, coefD, ones,  0);
+	assem.push_data(ones);
+	//assem.push_data(coefD);
 	assem.push_mat(D);              // output matrix
 	assem.assembly(rg);
+	vtk_export exp("./vtk/rad"+std::to_string(rg.id())+".vtk");
+	exp.exporting(mf_p);
+    exp.write_point_data(mf_p, ones, "r"); // write a scalar field
 }
-
 
 
 /*! Build the mixed boundary conditions for Poiseuille's problem

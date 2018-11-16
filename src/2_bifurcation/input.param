@@ -59,7 +59,7 @@ MESH_FILET = ' ';
 % Path to import the 1d list of points
 MESH_FILEV = './bifurcation.pts'
 % Path to import radius of the newtork (read if IMPORT_RADIUS=1)
-RFILE      = 'radius.pts'
+RFILE      = 'radius.1.pts'
 % Path to import the 1d list of points for Ht
 MESH_FILEH = './HT_BCs.pts'
 % Path to import the curvature of the vessels
@@ -125,7 +125,7 @@ sigma = 0.95;
 % Order of velocity profile in the vessels [-]
 Gamma = 2;
 % Young modulus of the vessel wall [Pa]
-E = 66E4;
+E = 20E4;
 % Poisson modulus of the vessel wall [-]
 nu = 0.5;
 %=================================

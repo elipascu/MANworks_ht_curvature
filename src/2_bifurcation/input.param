@@ -60,6 +60,8 @@ MESH_FILET = ' ';
 MESH_FILEV = './bifurcation.pts'
 % Path to import radius of the newtork (read if IMPORT_RADIUS=1)
 RFILE      = 'radius.1.pts'
+% Path to import thickness of vessel walls (read if IMPORT_RADIUS =1)
+THICKFILE  = 'thick_venule.pts'
 % Path to import the 1d list of points for Ht
 MESH_FILEH = './HT_BCs.pts'
 % Path to import the curvature of the vessels
@@ -109,7 +111,7 @@ U  = 100E-06;
 % Characteristic length of the problem [m]
 d  = 5.0E-4;
 % Hydraulic conductivity of the capillary walls [m^2 s/kg]
-Lp = 1E-12;
+Lp = 1E-12; %valore Luca-Simone
 % Average radius of the capillary vessels [m]
 RADIUS = 4.00E-6;
 % Blood Viscosity [kg/m/s]
@@ -206,7 +208,7 @@ Residual_Sol_FPM   = 1E-12;
 % Residual for Conservation of Mass FPM
 Residual_Mass_FPM  = 1E-10;
 % Maximum number of iterations for FPM
-Number_Iteration   = 30;
+Number_Iteration   = 20;
 % Under-relaxation coefficient
 UNDER_RELAXATION_COEFFICIENT  = 1;
 % Number of iteration between saving progress

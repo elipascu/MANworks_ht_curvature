@@ -1467,6 +1467,7 @@ scalar_type P_ = PARAM.real_value("P", "average interstitial pressure [Pa]");
 scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
 scalar_type e = 2.7182818284;
 
+
 scalar_type deltap = p_ext-p_int;
 scalar_type ratio = hu/Ru;
 scalar_type E_ = E/P_;  // dimensionless E 
@@ -1533,12 +1534,12 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 
 	for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 		for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
-
 			scalar_type deltap = p_ext[j] - p_int[j]; // cout<< "deltap " << deltap << endl;
 			scalar_type ratio = hu[j]/Ru[j];  //cout<< "ratio  " << ratio << endl;
 			size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 			if ( 1) {//i!= 0){
 			if (ratio >= 0.1){ // arteriola: rimane sezione circolare
+				cout << " arteriola  "<< endl;
 				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];  //cout<< "den " << den << endl;
 				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den; //cout<< "B1 " << B1 << endl;
 				scalar_type B2 = deltap * Ru[j]*Ru[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]) /den; //cout<< "B2 " << B2 << endl;
@@ -1550,10 +1551,11 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 				cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
 				//cout << U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R)<<endl;
 				}
-			else {   // venula
+			else {   
+				cout << " venula circolare  " << endl;
 				scalar_type threshold;
 				threshold = 3 *E *ratio*ratio*ratio /12.0 /(1-nu*nu);
-				scalar_type Rtmp = Ru[j] *(1 - Ru[j] * (1-nu*nu) /ratio /E_ *deltap);
+				scalar_type Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *deltap);
 				if(deltap <= threshold){   // allora rimane sezione circolare
 					R = Rtmp;
 					area = pi*R*R;

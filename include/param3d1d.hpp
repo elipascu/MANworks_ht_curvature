@@ -175,16 +175,20 @@ struct param3d1d {
 			for (size_type i=9; i < 17; i++ ){
 				R_[i] = R_[i-1] - 0.00007;
 			}*/
+			std::string THICKFILE = FILE_.string_value("THICKFILE"); 
+			cout << "  Importing thickness values from file " << THICKFILE << " ..." << endl;
+			std::ifstream istt(THICKFILE);
+			if (!istt) cerr << "impossible to read from file " << THICKFILE << endl;
+			import_network_radius(thick_, istt, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
+
 			gmm::resize(CSper_, dof_datav);
 			gmm::resize(CSarea_, dof_datav);
-			gmm::resize(thick_, dof_datav);
 			for (size_type i=0; i < dof_datav ; i++){
 				CSarea_[i] = pi * R_[i] * R_[i];
 				CSper_[i] = 2 *pi *R_[i];	
-				thick_[i] = R_[i] / 10.0;
+				//thick_[i] = R_[i] *0.08;
 				//cout << " R_["<<i<<"] = "<< R_[i]<<endl;
 				//cout << " CSarea_["<<i<<"] = "<< CSarea_[i]<<endl;
-				//cout << " CSper_["<<i<<"] = "<< CSper_[i]<<endl;
 			}
 		}
 

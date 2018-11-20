@@ -94,9 +94,9 @@ asm_advection_hematocrit_rvar
 	 
 	 {
 generic_assembly 
-	assem("l1=data$1(#2); l2=data$2(#2); l3=data$3(#2); u=data$4(#3); a=data$5(#2);"
-		  "t=comp(Grad(#1).Base(#1).Base(#2).Base(#2).Base(#3));"
-		  "M$1(#1,#1)+=t(:,1,:,i,i,p).l1(i).a(i).u(p) +t(:,2,:,i,i,p).l2(i).a(i).u(p)+t(:,3,:,i,i,p).l3(i).a(i).u(p);"); //.u(p)
+	assem("l1=data$1(#2); l2=data$2(#2); l3=data$3(#2); u=data$4(#3); a=data$5(#1);"
+		  "t=comp(Grad(#1).Base(#1).Base(#2).Base(#1).Base(#3));"
+		  "M$1(#1,#1)+=t(:,1,:,i,j,p).l1(i).a(j).u(p) +t(:,2,:,i,j,p).l2(i).a(j).u(p)+t(:,3,:,i,j,p).l3(i).a(j).u(p);"); //.u(p)
 
 
 	assem.push_mi(mim);
@@ -107,7 +107,7 @@ generic_assembly
 	assem.push_data(lambday);
 	assem.push_data(lambdaz);
 	assem.push_data(U);
-	assem.push_data(A);
+	assem.push_data(A);  // vector on mf_Hi
 	assem.push_mat(D);
 	assem.assembly(rg);
 
@@ -127,7 +127,7 @@ asm_network_artificial_diffusion
 	 
 	 {
 
- getfem::asm_stiffness_matrix_for_laplacian(D,mim,mf_h,mf_data, diff, rg);
+ getfem::asm_stiffness_matrix_for_laplacian(D,mim,mf_h,mf_h, diff, rg);
 
 } /*end asm_network_artificial_diffusion */
 

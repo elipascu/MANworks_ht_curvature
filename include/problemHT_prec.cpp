@@ -538,24 +538,21 @@ problemHT::assembly_mat(void)
 		
  		vector_type Uvi( mf_Uvi[i].nb_dof()); gmm::clear(Uvi);
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
-		vector_type Uvi_p( mf_Uvi[i].nb_dof()); gmm::clear(Uvi_p);
-		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi_p);
 		//Obtain the radius of branch i
 		scalar_type Ri = param.R(mimv, i);
-		//scalar_type Ri = param.Ri(i);
-		vector_type R_veci(mf_coefvi[i].nb_dof(), Ri); 		
+		//scalar_type Ri = param.Ri(i);	
+		vector_type areaip1(mf_Hi[i].nb_dof()); gmm::clear(areaip1);
 		
 		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
 		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 			for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
 				size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
-				areai[indcv_loc] = param.CSarea(j);
+				areai[indcv_loc] = param.CSarea(j);  //area vector of branch i
 				//R_veci[indcv_loc] = param.R(j);
 			}
 		}
 		//Obtain the flow in the branch i
-		gmm::scale(Uvi,pi*Ri*Ri);
-
+		getfem::interpolation(mf_coefvi[i], mf_Hi[i], areai, areaip1,  0); // projection of areas on mf_Hi of branch i (-> P1 areas)
 		cout << endl;
 		// Allocate temp local tangent versor
 			#ifdef M3D1D_VERBOSE_
@@ -567,7 +564,7 @@ problemHT::assembly_mat(void)
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
 		*/
 		asm_advection_hematocrit_rvar(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
-								mf_coefvi[i], Uvi_p, areai,
+								mf_coefvi[i], Uvi, areaip1,
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
 		
 		// cout << "---> --> --> --> versore tangente ematocrito ramo.."<< i << ": ..." << param.lambday(i) << endl;
@@ -577,10 +574,10 @@ problemHT::assembly_mat(void)
 			#endif
 		// Build Dhi
 
-		vector_type diff(mf_coefvi[i].nb_dof(),Diffusivity);
+		vector_type diff(mf_Hi[i].nb_dof(),Diffusivity);
 		//gmm::scale(diff,pi*Ri*Ri);
-		for (size_type k=0; k < mf_coefvi[i].nb_dof(); k++){
-			diff[k] *= areai[k];
+		for (size_type k=0; k < mf_Hi[i].nb_dof(); k++){
+			diff[k] *= areaip1[k];
 		}
 		asm_network_artificial_diffusion (Dhi, mimv, mf_Hi[i], mf_coefvi[i], diff, meshv.region(i));
 		// Copy Bhi and Dhi

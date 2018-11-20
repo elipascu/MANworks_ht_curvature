@@ -1074,18 +1074,19 @@ problemHT::solve_fixpoint(void)
 
 			}*/
 
-			// Allocate temp local matrices
+			// Allocate temp local matrices //mylapla
 			// cout << "-------- entra Mvv_mui "<< endl;
 			/*
 			sparse_matrix_type Mvv_lapi(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
 			getfem::asm_stiffness_matrix_for_laplacian(Mvv_lapi, mimv, mf_Uvi[i], mf_coefvi[i], ciD, meshv.region(i));
-			gmm::add(Mvv_lapi, 
+			gmm::add(gmm::scaled(Mvv_lapi,-1), 
 			 	gmm::sub_matrix(AM, 
 			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()), 
 			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()))); 
 
 			gmm::clear(Mvv_lapi);
 			*/
+			
 
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
 			sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
@@ -1198,8 +1199,6 @@ problemHT::solve_fixpoint(void)
 		asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, param.CSarea());
 		//asm_network_bc_rvar(Fv_bc, mimv, mf_Uvi, mf_coefv, BCv, P0_vel, area_und);
 
-		for (size_type kk = 0; kk < Fv_bc.size(); kk++)  cout<<" Fv_bc["<<kk<<"] =  "<<Fv_bc[kk]<<endl;
-
 		// RHS: tiene FM sempre uguale e aggiorna F_new. credo sia stato creato appositamente per il termine linfatico
 		gmm::copy(FM,F_new);
 		gmm::clear(gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv())));
@@ -1242,7 +1241,7 @@ problemHT::solve_fixpoint(void)
 	
 		H_new=iteration_solve(H_old, FM_HT);                               // HEMATOCRIT SOLVE
 
-		//gmm::copy(H_old, H_new);  // io
+		// gmm::copy(H_old, H_new);  // io
 		
 		//f-compute TFR
 		//g-compute lymphatic total flow rate
@@ -1576,6 +1575,18 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 					cond[j] = area * area /R /R /R /R /int_u_star;
 				}
 			}
+			   /*
+			   // warning overidding radius!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			   std::cout <<"x dof " << mf_coefv.point_of_basic_dof(j)[0]<<std::endl;
+				R=0.009;
+			    if (mf_coefv.point_of_basic_dof(j)[0] < 0.25 )
+				R = 0.008;   // adimensionalized
+				area = pi*R*R;
+				per = 2.0*pi*R;
+				//cout << "Ru   " << Ru[j] << " R  "<< R << endl;
+				//cout << " R   " << R << "   "<< U_/P_ /d << "   "<< area *area <<"  "<<2.0*(Gamma_ +2.0) /pi /R /R /R /R << "   "<< param.Curv(i,indcv_loc) << endl;
+				cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
+				*/
 			// update the values
 			param.replace_r ( R, j);
 			param.replace_area (area, j);

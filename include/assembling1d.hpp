@@ -117,13 +117,15 @@ asm_network_poiseuille_rvar
 		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#2);"
 			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#2));"
 			"t2=comp(Base(#2).Base(#1).Base(#3).Grad(#2));"
-			"M$1(#2,#1)+=t(:,:,1,i,j).l1(i).cs(j)+t(:,:,2,i,j).l2(i).cs(j)+t(:,:,3,i,j).l3(i).cs(j) + t2(:,:,i,j,1).l1(i).cs(j)+t2(:,:,i,j,2).l2(i).cs(j)+t2(:,:,i,j,3).l3(i).cs(j);");
-	/*
-	generic_assembly
-		assem("l1=data$1(#3); l2=data$2(#3); l3=data$3(#3); cs=data$4(#3);"
-			"t=comp(Base(#2).Grad(#1).Base(#3).Base(#3));"
-			"M$1(#2,#1)+=t(:,:,1,i,i).l1(i).cs(i)+t(:,:,2,i,i).l2(i).cs(i)+t(:,:,3,i,i).l3(i).cs(i);");
-	*/
+			"M$1(#2,#1)+=t(:,:,1,i,j).l1(i).cs(j)+t(:,:,2,i,j).l2(i).cs(j)+t(:,:,3,i,j).l3(i).cs(j)+ t2(:,:,i,j,1).l1(i).cs(j)+t2(:,:,i,j,2).l2(i).cs(j)+t2(:,:,i,j,3).l3(i).cs(j);");
+
+
+	// vector_type ones(mf_p.nb_dof(),coefD[coefD.size()]);
+	vector_type areap1(mf_p.nb_dof());
+	//vector_type ones_p0(mf_data.nb_dof(),0.008);
+	getfem::interpolation(mf_data, mf_p, coefD, areap1,  0);
+	//getfem::interpolation(mf_p, mf_data, ones, ones_p0,  0);
+
 	assem.push_mi(mim);
 	assem.push_mf(mf_u);
 	assem.push_mf(mf_p);
@@ -131,15 +133,63 @@ asm_network_poiseuille_rvar
 	assem.push_data(lambdax);
 	assem.push_data(lambday);
 	assem.push_data(lambdaz);
-	vector_type ones(mf_p.nb_dof(),coefD[coefD.size()]);
-	getfem::interpolation(mf_data, mf_p, coefD, ones,  0);
-	assem.push_data(ones);
-	//assem.push_data(coefD);
+
+	//  assem.push_data(ones);
+	assem.push_data(areap1);
+    //assem.push_data(ones_p0);
 	assem.push_mat(D);              // output matrix
 	assem.assembly(rg);
-	vtk_export exp("./vtk/rad"+std::to_string(rg.id())+".vtk");
+	vtk_export exp("./vtk/area"+std::to_string(rg.id())+".vtk");
 	exp.exporting(mf_p);
-    exp.write_point_data(mf_p, ones, "r"); // write a scalar field
+    exp.write_point_data(mf_p, areap1, "r"); // write a scalar field
+	// vtk_export exp2("./vtk/radp0"+std::to_string(rg.id())+".vtk");
+	// exp2.exporting(mf_data);
+    // exp2.write_cell_data( ones_p0, "r"); // write a scalar field
+    // exp.write_cell_data(ones_p0, "rp0"); // write a p0 field
+
+/*
+	mesh_region mr_internal_face = inner_faces_of_mesh(mf_data.linked_mesh(),rg);
+	vector_type coefDnext(coefD.size());
+	vector_type coefDprev(coefD.size());
+
+	for ( size_type i=1; i < coefD.size(); i++){
+		coefDprev[i] =-coefD[i-1] + coefD[i];
+     	cout << " area_diff["<<i<<"]  =  "<< coefDnext[i] << endl;
+	}
+	coefDnext[coefD.size()-1]=coefDnext[coefD.size()-2];
+
+	coefDprev[0]=coefDprev[1];
+	
+		generic_assembly 
+		assem_nodes("a=data$1(#3);"
+			"t=comp(Base(#2).Base(#1).Base(#3));"
+			"M$1(#2,#1)+=t(:,:,i).a(i);");
+	assem_nodes.push_mi(mim);
+	assem_nodes.push_mf(mf_u);
+	assem_nodes.push_mf(mf_p);
+	assem_nodes.push_mf(mf_data);
+	assem_nodes.push_data(coefDnext);
+	assem_nodes.push_mat(D);
+	assem_nodes.assembly(mr_internal_face);
+	*/
+
+/*
+	generic_assembly 
+		assem_nodes("a=data$1(#3); anext=data$2(#3);aprev=data$3(#3);"
+			"t=comp(Base(#2).Base(#1).Base(#3));"
+			"t2=comp(Base(#2).Grad(#1).Base(#3));"
+			"M$1(#2,#1)+=t(:,:,i).anext(i)*0.+ t2(:,:,1,i).anext(i)*0;");
+	assem_nodes.push_mi(mim);
+	assem_nodes.push_mf(mf_u);
+	assem_nodes.push_mf(mf_p);
+	assem_nodes.push_mf(mf_data);
+	assem_nodes.push_data(coefD);
+	assem_nodes.push_data(coefDnext);
+	assem_nodes.push_data(coefDprev);
+	assem_nodes.push_mat(D);
+	assem_nodes.assembly(mr_internal_face);
+*/
+
 }
 
 
@@ -259,7 +309,7 @@ asm_network_bc_rvar
 			// Add gv contribution to Fv
 			size_type k = mf_data.linked_mesh().convex_to_point(BC[bc].idx)[0];
 			area_loc = area[mf_data.ind_basic_dof_of_element(k)[0]]; // also this works only for P0 data on vessels
-			cout << " asm bc   area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
+			//cout << " asm bc   area_loc = " << area_loc << ",    node index = " << BC[bc].idx << endl;
 			scalar_type BCVal = BC[bc].value*area_loc;  // valore al bordo * area
 			getfem::asm_source_term(gmm::sub_vector(F, gmm::sub_interval(start,mf_u[i].nb_dof())), 
 				mim, mf_u[i], mf_data, gmm::scaled(ones, BCVal), BC[bc].rg);

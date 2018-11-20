@@ -13,7 +13,7 @@
 # ==================================================================== 
 include ../config.mk
 
-DEBUG=yes
+#DEBUG=yes
 
 CPPFLAGS=-I. -I$(mkGetfemInc) -I$(mkBoostInc)
 CXXFLAGS+=-std=c++14

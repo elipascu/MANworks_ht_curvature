@@ -1511,8 +1511,9 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 				scalar_type threshold;
 				threshold = 3 *E_ *ratio*ratio*ratio /12.0 /(1-nu*nu);
 				cout << " threshold  " << threshold <<  "   ==== deltap   "<< deltap << endl;
-				scalar_type Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *deltap);
+				scalar_type Rtmp;
 				if(deltap <= threshold){   // allora rimane sezione circolare
+					Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *deltap);
 					cout << " venula circolare  " << endl;
 					R = Rtmp;
 					area = pi*R*R;
@@ -1521,16 +1522,19 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 					cout << " cond per venula circolare   " << cond[j] << endl;
 				}
 				else{   // buckling case: negletting curvature
+					Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *threshold);
 					cout << " venula collassata  "<<endl;
 					scalar_type h_new = hu[j] * Ru[j] /Rtmp;
 					ratio = h_new/Rtmp; // update ratio
-					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio;
+					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio; // p_adim è la pressione equivalente del paper di Tadj
 					scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
-					area = 15.95 * pow(e, -0.545 * p_adim);
+					area = 15.95 * pow(e, -0.545 * p_adim) * Rtmp *Rtmp;
 					per = 2* pi * Rtmp;
 					R = area /per;  //hydraulic radius
 					cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_star;
-					cout << " p_adim    " << p_adim << " =======    cond per venula collassata " << cond[j] << endl;
+					if(p_adim > 5.3138 ) area = 0.8212 * Rtmp *Rtmp ;
+					cout << " p_adim    " << p_adim <<"==============     area = "<< area << " =======    cond per venula collassata " << cond[j] << endl;
+
 				}
 			}
 			   /*

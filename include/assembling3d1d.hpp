@@ -139,10 +139,6 @@ asm_exchange_mat
 	cout << "    Assembling Bvv ..." << endl;  
 	#endif
 
-	// prova proiezione perimetri
-	vector_type Q_lin (mf_p.nb_dof());
-	getfem::interpolation(mf_coefv, mf_p, Q, Q_lin, 0);
-	
 	getfem::asm_mass_matrix_param(Bvv, mim, mf_p, mf_coefv, Q); 
 	#ifdef M3D1D_VERBOSE_
 	cout << "    Assembling Bvt ..." << endl;

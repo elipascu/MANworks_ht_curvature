@@ -183,7 +183,7 @@ D_LF = -1.9092*133.32;
 % BC labels (DIR / MIX)
 BClabel = 'MIX MIX  MIX  MIX  MIX  MIX'
 % BC values
-BCvalue = '29.0 29.0  29.0  29.0  29.0  29.0'
+BCvalue = '29.5 29.5  29.5  29.5  29.5  29.5'
 % Coefficient for MIX condition
 BCbeta = '2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6';
 % Outside interstitial pressure for MIX condition
@@ -209,9 +209,9 @@ Residual_Sol_FPM   = 1E-12;
 % Residual for Conservation of Mass FPM
 Residual_Mass_FPM  = 1E-10;
 % Maximum number of iterations for FPM
-Number_Iteration   = 10;
+Number_Iteration   = 20;
 % Under-relaxation coefficient
-UNDER_RELAXATION_COEFFICIENT  = 1;
+UNDER_RELAXATION_COEFFICIENT  = 0.9;
 % Number of iteration between saving progress
 Saving_Iteration   = 1;
 % Residual for Conservation of Mass FPM

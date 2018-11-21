@@ -1153,6 +1153,7 @@ problemHT::solve_fixpoint(void)
 		//cout << " dim Q_rvar = " << Q_rvar.size() << " dim param.Q() " << param.Q().size() << endl;
 		//for (size_type i=0; i < Q_rvar.size() ; i++){ cout << "Q_rvar["<<i<<"]  =  "<< Q_rvar[i]<<endl;}
 		bool NEWFORM = PARAM.int_value("NEW_FORMULATION");
+
 		asm_exchange_mat(Btt, Btv, Bvt, Bvv, mimv, mf_Pv, mf_coefv, Mbar, Mlin, Q_rvar, NEWFORM);
 		// Copying Btt
 		gmm::add(Btt,
@@ -1356,10 +1357,21 @@ problemHT::solve_fixpoint(void)
 		gmm::clear(auxOSt);
 		gmm::clear(auxOSv);
 		gmm::clear(p_int); gmm::clear(p_ext);
+
+			std::string ODIR = PARAM.string_value("OutputDir","OutputDirectory");
+			getfem::vtk_export exp(ODIR+"radius_def.vtk");
+			exp.exporting(mf_coefv);
+			exp.write_mesh();
+			exp.write_point_data(mf_coefv, param.R(), "R_var");
+			getfem::vtk_export expQ(ODIR+"Q_rvar.vtk");
+			expQ.exporting(mf_coefv);
+			expQ.write_mesh();
+			expQ.write_point_data(mf_coefv, Q_rvar, "Q_rvar");
+
 	} //Exit the while
 	
-	cout << " hematocrit values  "<< endl;
-	for (size_type i=0; i< UM_HT.size(); i++) cout << " UM_HT["<<i<<"] =  "<< UM_HT[i] << endl;
+	//cout << " hematocrit values  "<< endl;
+	//for (size_type i=0; i< UM_HT.size(); i++) cout << " UM_HT["<<i<<"] =  "<< UM_HT[i] << endl;
 
 	gmm::copy(U_old,UM);
 
@@ -1451,62 +1463,6 @@ problemHT::export_vtk(const string & suff) //ODIFCA
 
 
 
-void 
-problemHT::vessel_conductivity(
-	scalar_type & w,
-    scalar_type Ru,
-    scalar_type hu,
-    scalar_type p_int,
-    scalar_type p_ext,
-	scalar_type curv)
-{	
-// leggere nu (modulo di poisson) e E (modulo di young) da file input.param
-scalar_type E = PARAM.real_value("E", "Young modulus of the vessel wall");
-scalar_type nu = PARAM.real_value("nu", "Poisson modulus of the vessel wall");
-scalar_type P_ = PARAM.real_value("P", "average interstitial pressure [Pa]");
-scalar_type d = PARAM.real_value("d", "Characteristic length of the problem [m]");
-scalar_type e = 2.7182818284;
-
-
-scalar_type deltap = p_ext-p_int;
-scalar_type ratio = hu/Ru;
-scalar_type E_ = E/P_;  // dimensionless E 
-scalar_type R, area, per;
-
-if (ratio >= 0.1){ // arteriola: rimane sezione circolare
-	scalar_type den = (Ru+hu)*(Ru+hu) - Ru*Ru;
-	scalar_type B1 = (p_int *Ru*Ru - p_ext*(Ru+hu)*(Ru+hu))/den;
-	scalar_type B2 = deltap * Ru*Ru*(Ru+hu) /den;
-	R = Ru*(1+ (1-nu)/E_ *B1 - (1+nu)/E_ *B2 /Ru /Ru);   // adimensionalized
-	area = pi*R*R;
-	per = 2.0*pi*R;
-	w = (1.0 + curv*curv*R*R);
-	}
-else {   // venula
-	scalar_type threshold;
-	threshold = 3 *E *ratio*ratio*ratio /12 /(1-nu*nu);
-	scalar_type Rtmp = Ru *(1 - Ru * (1-nu*nu) /ratio /E_ *deltap );
-	// new ratio with new thickness for buckling case???
-	if((deltap <= threshold)){   // allora rimane sezione circolare
-		R = Rtmp;
-		area = pi*R*R;
-		per = 2*pi*R;
-		w = (1.0 + curv*curv*R*R) ;
-	}
-	else{   // buckling case: negletting curvature
-		scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio;
-		scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
-		area = 15.95 * pow(e, -0.545 * p_adim);
-		per = 2* pi * Rtmp;
-		R = area /per;  //hydraulic radius
-		w = int_u_star;
-	}
-	
-}
-
-
-} // end pf vessel_conductivity
-
 
 void 
 problemHT::vessel_conductivity_vec(
@@ -1552,15 +1508,17 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 				//cout << U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R)<<endl;
 				}
 			else {   
-				cout << " venula circolare  " << endl;
 				scalar_type threshold;
-				threshold = 3 *E *ratio*ratio*ratio /12.0 /(1-nu*nu);
+				threshold = 3 *E_ *ratio*ratio*ratio /12.0 /(1-nu*nu);
+				cout << " threshold  " << threshold <<  "   ==== deltap   "<< deltap << endl;
 				scalar_type Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *deltap);
 				if(deltap <= threshold){   // allora rimane sezione circolare
+					cout << " venula circolare  " << endl;
 					R = Rtmp;
 					area = pi*R*R;
 					per = 2*pi*R;
 					cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
+					cout << " cond per venula circolare   " << cond[j] << endl;
 				}
 				else{   // buckling case: negletting curvature
 					cout << " venula collassata  "<<endl;
@@ -1571,7 +1529,8 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 					area = 15.95 * pow(e, -0.545 * p_adim);
 					per = 2* pi * Rtmp;
 					R = area /per;  //hydraulic radius
-					cond[j] = area * area /R /R /R /R /int_u_star;
+					cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_star;
+					cout << " p_adim    " << p_adim << " =======    cond per venula collassata " << cond[j] << endl;
 				}
 			}
 			   /*

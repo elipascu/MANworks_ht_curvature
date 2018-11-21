@@ -134,14 +134,6 @@ protected:
 	vector_type iteration_solve(vector_type,vector_type);
 	scalar_type calcolo_Rk(vector_type, vector_type);
 
-
-	void vessel_conductivity
-	(scalar_type &,
-    scalar_type,
-    scalar_type,
-    scalar_type,
-    scalar_type,
-	scalar_type);
 	
 	void vessel_conductivity_vec(
 		const mesh_fem & ,

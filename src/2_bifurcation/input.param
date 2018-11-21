@@ -111,7 +111,8 @@ U  = 100E-06;
 % Characteristic length of the problem [m]
 d  = 5.0E-4;
 % Hydraulic conductivity of the capillary walls [m^2 s/kg]
-Lp = 1E-12; %valore Luca-Simone
+%Lp = 1E-12; %valore Luca-Simone
+Lp = 1E-12;
 % Average radius of the capillary vessels [m]
 RADIUS = 4.00E-6;
 % Blood Viscosity [kg/m/s]
@@ -182,7 +183,7 @@ D_LF = -1.9092*133.32;
 % BC labels (DIR / MIX)
 BClabel = 'MIX MIX  MIX  MIX  MIX  MIX'
 % BC values
-BCvalue = '0.0 0.0  0.0  0.0  0.0  0.0'
+BCvalue = '29.0 29.0  29.0  29.0  29.0  29.0'
 % Coefficient for MIX condition
 BCbeta = '2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6';
 % Outside interstitial pressure for MIX condition
@@ -208,7 +209,7 @@ Residual_Sol_FPM   = 1E-12;
 % Residual for Conservation of Mass FPM
 Residual_Mass_FPM  = 1E-10;
 % Maximum number of iterations for FPM
-Number_Iteration   = 20;
+Number_Iteration   = 10;
 % Under-relaxation coefficient
 UNDER_RELAXATION_COEFFICIENT  = 1;
 % Number of iteration between saving progress

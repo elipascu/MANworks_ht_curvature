@@ -1014,7 +1014,8 @@ problemHT::solve_fixpoint(void)
 							scalar_type h = H_const[ind_loc];
 							if(h==0) { mui[ind_loc]=mu_plasma; }
 							else {mui[ind_loc]=viscosity_vivo(h, param.R(muu)*dim, mu_plasma); }
-							//mui[ind_loc]=mu_plasma;
+							if (mui[ind_loc] < mu_plasma)  mui[ind_loc]=mu_plasma; // the formula for the viscosity is valid only in a certain range for diameter
+							// when we have infinitesimal radius, viscosity goes to zero, this is unreal, so we set viscosity to the mu_ref value
 							MU[muu] = mui[ind_loc];
 						}
 					}
@@ -1058,7 +1059,9 @@ problemHT::solve_fixpoint(void)
 					//				/param.R(j) /param.R(j) /param.R(j) /param.R(j) 
 					//				* (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j));
 					if (COMPLIANT_VESSELS()) ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
+
 					else ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) / mu_start * mui[indcv_loc];
+					cout << " ---ramo  " << i << " ----  mui   " << mui[indcv_loc] << " ----  cond   "<< conduct_rvar[j] << " ---- ciM[indcv_loc] "<< ciM[indcv_loc] << endl;
 					//cout << "-------- ciM  "<<ciM[indcv_loc]<< " ----- conduct  "<< conduct_rvar[j] << "  ----- mui   " << mui[indcv_loc] << endl;
 					Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
 				    //Q_rvar[j] = per_und[j] * Lp *P_ /U_;
@@ -1522,17 +1525,28 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 					cout << " cond per venula circolare   " << cond[j] << endl;
 				}
 				else{   // buckling case: negletting curvature
-					Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *threshold);
+					Rtmp = Ru[j]; //*(1 - (1-nu*nu) /ratio /E_ *threshold);
 					cout << " venula collassata  "<<endl;
-					scalar_type h_new = hu[j] * Ru[j] /Rtmp;
-					ratio = h_new/Rtmp; // update ratio
+					//scalar_type h_new = hu[j] * Ru[j] /Rtmp;
+					//ratio = h_new/Rtmp; // update ratio
 					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio; // p_adim è la pressione equivalente del paper di Tadj
-					scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
+					//	definisco caso limite il valore di padim per cui la vena è definita collassata-
+					// se sono prima del caso limite, uso u_star e area vere. se sono oltre il caso limite, 
+					//uso area vera solo per calcolare raggio vero, ma poi salvo solo area 
+					// e il cond del caso limite
 					area = 15.95 * pow(e, -0.545 * p_adim) * Rtmp *Rtmp;
 					per = 2* pi * Rtmp;
 					R = area /per;  //hydraulic radius
-					cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_star;
-					if(p_adim > 5.3138 ) area = 0.8212 * Rtmp *Rtmp ;
+					if (p_adim < 5 ) {
+						scalar_type int_u_star = 69.56 * pow(e, -1.74 * p_adim);
+						cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_star;
+					}
+					else {
+						p_adim = 5;
+						scalar_type int_u_starfake = 69.56 * pow(e, -1.74 * p_adim);
+						area = 15.95 * pow(e, -0.545 * p_adim) * Rtmp *Rtmp;
+						cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_starfake;
+					}
 					cout << " p_adim    " << p_adim <<"==============     area = "<< area << " =======    cond per venula collassata " << cond[j] << endl;
 
 				}

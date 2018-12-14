@@ -43,7 +43,7 @@ LINEAR_LYMPHATIC_DRAINAGE = 1;
 % Flag to study the hematocrit distribution all over the network (0 = constant; 1= transport)
 HEMATOCRIT_TRANSPORT = 1;
 % Flag to have compliant vessels
-COMPLIANT_VESSELS = 1;
+COMPLIANT_VESSELS = 1; 
 %===================================
 %  MESH
 %===================================
@@ -61,7 +61,8 @@ MESH_FILEV = './bifurcation.pts'
 % Path to import radius of the newtork (read if IMPORT_RADIUS=1)
 RFILE      = 'radius.1.pts'
 % Path to import thickness of vessel walls (read if IMPORT_RADIUS =1)
-THICKFILE  = 'thick_venule.pts'
+% If you do not import thicknesses, all vessels are set arterioles with ratio 0.2
+THICKFILE  = 'thick_1buck.pts'
 % Path to import the 1d list of points for Ht
 MESH_FILEH = './HT_BCs.pts'
 % Path to import the curvature of the vessels
@@ -183,6 +184,7 @@ D_LF = -1.9092*133.32;
 % BC labels (DIR / MIX)
 BClabel = 'MIX MIX  MIX  MIX  MIX  MIX'
 % BC values
+%BCvalue = '15.0 15.0 15.0  15.0  15.0  15.0'
 BCvalue = '30.0 30.0 30.0  30.0  30.0  30.0'
 % Coefficient for MIX condition
 BCbeta = '2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6 2.22E-6';
@@ -211,7 +213,7 @@ Residual_Mass_FPM  = 1E-10;
 % Maximum number of iterations for FPM
 Number_Iteration   = 20;
 % Under-relaxation coefficient
-UNDER_RELAXATION_COEFFICIENT  = 0.9;
+UNDER_RELAXATION_COEFFICIENT  = 1;
 % Number of iteration between saving progress
 Saving_Iteration   = 1;
 % Residual for Conservation of Mass FPM

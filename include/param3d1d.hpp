@@ -178,8 +178,12 @@ struct param3d1d {
 			std::string THICKFILE = FILE_.string_value("THICKFILE"); 
 			cout << "  Importing thickness values from file " << THICKFILE << " ..." << endl;
 			std::ifstream istt(THICKFILE);
-			if (!istt) cerr << "impossible to read from file " << THICKFILE << endl;
-			import_network_radius(thick_, istt, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
+			if (!istt) { 
+				cerr << "impossible to read from file " << THICKFILE << endl;
+				gmm::resize(thick_, mf_datav_.nb_dof()); 
+				for( size_type i=0; i < R_.size(); i++) thick_[i] = R_[i] * 0.2; // if file not found, set all arterioles
+			}
+			else import_network_radius(thick_, istt, mf_datav_);//GR import_network_radius(R_,Ri_, ist, mf_datav_);;
 
 			gmm::resize(CSper_, dof_datav);
 			gmm::resize(CSarea_, dof_datav);
@@ -375,10 +379,12 @@ struct param3d1d {
 	void replace_r ( scalar_type R_new, size_type i){ R_[i] = R_new; }
 	//! Get the Cross Section area
 	vector_type & CSarea(void) { return CSarea_; }
+	//! Modify the values of cross section area
 	void replace_area ( vector_type area_new){ CSarea_ = area_new; }
 	void replace_area ( scalar_type area_new, size_type i){ CSarea_[i] = area_new; }
 	//! Get the Cross Section perimeter
 	vector_type & CSper(void) { return CSper_; }
+	//! Modify the values of cross section perimeter
 	void replace_per ( vector_type per_new){ CSper_ = per_new; }
 	void replace_per ( scalar_type per_new, size_type i){ CSper_[i] = per_new; }
 	//! Get the thickness of vessel wall

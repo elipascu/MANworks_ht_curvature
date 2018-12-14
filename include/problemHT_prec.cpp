@@ -540,29 +540,22 @@ problemHT::assembly_mat(void)
 		gmm::copy(gmm::sub_vector(UM, gmm::sub_interval(dof.Ut()+dof.Pt()+shift_U, mf_Uvi[i].nb_dof())) ,  Uvi);
 		//Obtain the radius of branch i
 		scalar_type Ri = param.R(mimv, i);
-		//scalar_type Ri = param.Ri(i);	
 		vector_type areaip1(mf_Hi[i].nb_dof()); gmm::clear(areaip1);
 		
 		vector_type areai(mf_coefvi[i].nb_dof()); gmm::clear(areai);
 		for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
 			for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
-				size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
+				size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0]; // it works only if areas are polynomials P0
 				areai[indcv_loc] = param.CSarea(j);  //area vector of branch i
-				//R_veci[indcv_loc] = param.R(j);
 			}
 		}
 		//Obtain the flow in the branch i
 		getfem::interpolation(mf_coefvi[i], mf_Hi[i], areai, areaip1,  0); // projection of areas on mf_Hi of branch i (-> P1 areas)
-		cout << endl;
 		// Allocate temp local tangent versor
 			#ifdef M3D1D_VERBOSE_
 		cout << "Assembling Advection Matrix for branch n° " << i << endl;
 			#endif
 		// Build Bhi
-		/*asm_advection_hematocrit(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
-								mf_coefvi[i], Uvi, R_veci,
-									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
-		*/
 		asm_advection_hematocrit_rvar(Bhi, mimv, mf_Hi[i], mf_Uvi[i],
 								mf_coefvi[i], Uvi, areaip1,
 									param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));
@@ -608,7 +601,6 @@ problemHT::assembly_mat(void)
 		dim=dim*1E6; // unit of measure in Pries formula is micrometers
 
 		asm_hematocrit_junctions_rvar(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.CSarea(), param.R(), UM_HT,dim, AM_HT);
-		//asm_hematocrit_junctions(Jvv, Jh,Uv, mimv,mf_Hi, mf_Pv, mf_Uvi, mf_coefv, Jv_HT, param.R(),UM_HT,dim, AM_HT);
 
 		// Copy Jh
 		gmm::add(Jh,AM_HT);
@@ -712,12 +704,12 @@ problemHT::solve_fixpoint(void)
 {
 /*solver 
 1- Declaration of variables
-2- Save the constant matrices (that don't change during the iterative process)
+2- Save the constant matrices (that don't change during the iterative process), namely Mlin and Mbar
 3- Get the intial guess for hematocrit (the fluid dynamic solution is already done in the main)
 4- Iterative Process
-			a-compute the viscosity in each vessel
-			b-modify the mass matrix for fluid dynamic problem
-			c- add the lymphatic contribution
+			a-compute deformed cross section: radius, area, perimeter, coefficient of resistance to flow
+			b-compute the viscosity in each vessel
+			c-re-assembly all the matrices except Mtt, Dtt, Ft
 			d-1 find the new solution as AM *U(k+1) = F(k)
 			d-2 under-relaxation process U(k+1)= alfa*U(k+1) + (1-alfa)U(k)
 			e-1 find the new solution for hematocrit as AM_HT *H(k+1) = F(k)
@@ -794,11 +786,9 @@ problemHT::solve_fixpoint(void)
 	scalar_type epsH=descrHT.epsH;
 	scalar_type resH=epsH*100;
 
-	// vectors for deformed vessels
-	vector_type conduct_rvar(mf_coefv.nb_dof(), 0);
-	vector_type r_def = param.R();
-	vector_type area_def = param.CSarea();
-	vector_type per_def = param.CSper();
+	// vector of coefficients of the resiatnce to flow
+	vector_type resistance_rvar(mf_coefv.nb_dof(), 0);
+
 	// vectors for undeformed vessels
 	vector_type r_und = param.R();
 	vector_type area_und = param.CSarea();
@@ -914,7 +904,8 @@ problemHT::solve_fixpoint(void)
 	vector_type ones_H(dofHT.H(),1.00);
 	gmm::add(ones_H, UM_HT);
 	gmm::scale(UM_HT,H_start);	
-
+	
+	// assembly matrices of hematocrit problem
 	assembly();
 
 	// 3 - Get the initial guess H0
@@ -938,22 +929,13 @@ problemHT::solve_fixpoint(void)
 
 	//4- Iterative Process
 	while(RK && iteration < max_iteration){
-		/*
-		// pulisco AM da Dvv e Jvv e i rispettivi trasposti
-		gmm::clear(gmm::sub_matrix(AM,
-			gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ),
-			gmm::sub_interval(dof.Ut() + dof.Pt(), dof.Uv() ) ) );	
 
-		gmm::clear(gmm::sub_matrix(AM,
-			gmm::sub_interval(dof.Ut() + dof.Pt(),  dof.Uv() ),
-			gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv() ) ) );	
-		*/
-		// pulisco tutto ciò che contiene il raggio
+		// Clear everything that depends on the radius: Mtt and Dtt are the only matrices left
 		gmm::clear(gmm::sub_matrix(AM,
 			gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv()),
-			gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv()))); //con questo comando in AM sono rimaste solo Mtt e Dtt
+			gmm::sub_interval(dof.Ut(), dof.Pt() + dof.Uv() + dof.Pv())));
 
-		// a-compute the viscosity in each vessel
+		// a-compute deformed geometry
 		#ifdef M3D1D_VERBOSE_
 		cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
 		#endif
@@ -981,16 +963,16 @@ problemHT::solve_fixpoint(void)
 		
 		
 		if (COMPLIANT_VESSELS()){
-			vessel_conductivity_vec(mf_coefv, mf_coefvi, conduct_rvar, r_und, param.thick(), p_int, p_ext);
+			vessel_conductivity_vec(mf_coefv, mf_coefvi, resistance_rvar, r_und, param.thick(), p_int, p_ext);
 		}
 		//cout << " radius after  " << endl;
 		/*for(size_type k=0; k<mf_coefv.nb_dof(); k++){
 			//cout << " p_int " << p_int[k] << "  p_ext "<< p_ext[k] << " R " << param.R(k) << "  h  " << param.thick(k) << endl;
-			cout << " R " << param.R(k) <<  "     conduct   " << conduct_rvar[k] << endl;
+			cout << " R " << param.R(k) <<  "     conduct   " << resistance_rvar[k] << endl;
 		}*/
 
 
-
+		// b-compute the viscosity in each vessel
 		for(size_type i=0; i<nb_branches; ++i){
 
 			vector_type Hi(mf_Hi[i].nb_dof());
@@ -1014,7 +996,7 @@ problemHT::solve_fixpoint(void)
 							scalar_type h = H_const[ind_loc];
 							if(h==0) { mui[ind_loc]=mu_plasma; }
 							else {mui[ind_loc]=viscosity_vivo(h, param.R(muu)*dim, mu_plasma); }
-							if (mui[ind_loc] < mu_plasma)  mui[ind_loc]=mu_plasma; // the formula for the viscosity is valid only in a certain range for diameter
+							//if (mui[ind_loc] < mu_plasma)  mui[ind_loc]=mu_plasma; // the formula for the viscosity is valid only in a certain range for diameter
 							// when we have infinitesimal radius, viscosity goes to zero, this is unreal, so we set viscosity to the mu_ref value
 							MU[muu] = mui[ind_loc];
 						}
@@ -1038,7 +1020,9 @@ problemHT::solve_fixpoint(void)
 			// cout << "-------- end switch " << endl;
 
 
-			//b-modify the mass matrix for fluid dynamic problem
+			//c- Re-assembly all the matrices except Mtt, Dtt, Ft
+
+			// We consider only the problem with DIR conditions, hence Mvv == Mvv_mui, there is no Mvv_bc
 			#ifdef M3D1D_VERBOSE_
 			cout << "Modify Mvvk - Iteration "<< iteration << "..." << endl;
 			#endif
@@ -1052,55 +1036,25 @@ problemHT::solve_fixpoint(void)
 					// works only for P0 coefficients
 					size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 					ciD[indcv_loc] = param.CSarea(j);
-					//ciD[indcv_loc] = area_und[j];
-					//ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) 
-					//					/ mu_start * mui[indcv_loc];
-					//ciM[indcv_loc] = 1E-6 *mui[indcv_loc] *U_ /P_ /dim *param.CSarea(j) *param.CSarea(j) *2.0*(Gamma_ +2.0) /pi 
-					//				/param.R(j) /param.R(j) /param.R(j) /param.R(j) 
-					//				* (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j));
-					if (COMPLIANT_VESSELS()) ciM[indcv_loc] = conduct_rvar[j] * mui[indcv_loc];
+					if (COMPLIANT_VESSELS()) ciM[indcv_loc] = resistance_rvar[j] * mui[indcv_loc];
 
 					else ciM[indcv_loc] = param.CSarea(j) * param.CSarea(j) / kvi * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*param.R(j)*param.R(j)) / mu_start * mui[indcv_loc];
-					cout << " ---ramo  " << i << " ----  mui   " << mui[indcv_loc] << " ----  cond   "<< conduct_rvar[j] << " ---- ciM[indcv_loc] "<< ciM[indcv_loc] << endl;
-					//cout << "-------- ciM  "<<ciM[indcv_loc]<< " ----- conduct  "<< conduct_rvar[j] << "  ----- mui   " << mui[indcv_loc] << endl;
+					//cout << " ---ramo  " << i << " ----  mui   " << mui[indcv_loc] << " ----  cond   "<< resistance_rvar[j] << " ---- ciM[indcv_loc] "<< ciM[indcv_loc] << endl;
+					//cout << "-------- ciM  "<<ciM[indcv_loc]<< " ----- conduct  "<< resistance_rvar[j] << "  ----- mui   " << mui[indcv_loc] << endl;
 					Q_rvar[j] = param.CSper(j) * Lp *P_ /U_;
-				    //Q_rvar[j] = per_und[j] * Lp *P_ /U_;
-					   //cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
+					//cout << "area_el = "<< area_el << ",   indice ciM = " <<mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0] <<",    Curv(i,j)= "<<param.Curv(i,j) << endl;
 					//cout << " Q_rvar["<<j<<"] = "<< Q_rvar[j]<<endl;
 				}
 			}
-			/*for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
-				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
 
-			}*/
-
-			// Allocate temp local matrices //mylapla
-			// cout << "-------- entra Mvv_mui "<< endl;
-			/*
-			sparse_matrix_type Mvv_lapi(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
-			getfem::asm_stiffness_matrix_for_laplacian(Mvv_lapi, mimv, mf_Uvi[i], mf_coefvi[i], ciD, meshv.region(i));
-			gmm::add(gmm::scaled(Mvv_lapi,-1), 
-			 	gmm::sub_matrix(AM, 
-			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()), 
-			 		gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()))); 
-
-			gmm::clear(Mvv_lapi);
-			*/
-			
-
+			// Allocate temp local matrices
 			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
 			sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
 			// Build Mvv_mui
 			// cout << "-------- entra netw_pois "<< endl;
 			asm_network_poiseuille_rvar(Mvv_mui, Dvvi, mimv, mf_Uvi[i], mf_Pv, mf_coefvi[i], ciM, ciD, param.lambdax(i), param.lambday(i), param.lambdaz(i), meshv.region(i));	
-			//gmm::clear(Mvv_mui);
-			//asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ciM, meshv.region(i));
-			// Copy Mvv_mui in Mvv_mu
-			/*gmm::add(Mvv_mui, 
-				gmm::sub_matrix(Mvv_mu, 
-					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
-					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
-			*/
+			
+			// add Mvv_mui and Dvvi at the monolitic matrix
 			gmm::add(Mvv_mui, 
 				gmm::sub_matrix(AM, 
 					gmm::sub_interval(dof.Ut()+dof.Pt() + shift, mf_Uvi[i].nb_dof()), 
@@ -1118,25 +1072,10 @@ problemHT::solve_fixpoint(void)
 			gmm::clear(Dvvi);
 		
 		} /* end of branches loop */
-
-		//Update Mvv and AM matrix
-		//gmm::add(Mvv_mu,Mvv_bc,Mvv); // non ho Mvv_bc perchè faccio solo caso DIR
-		//gmm::clear(gmm::sub_matrix(AM,  // ho già pulito tutto all'inizio del while
-		//		gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
-		//		gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
-
-		/*gmm::copy(Mvv_mu,
-				gmm::sub_matrix(AM, 
-				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
-				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		
-		//gmm::clear(Mvv);
-		gmm::clear(Mvv_mu);
-		*/
 		// update the Junction matrix Jvv and add it to the monolitic matrix
 		sparse_matrix_type Jvv(dof.Pv(), dof.Uv());
 		asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, param.CSarea());
-		//asm_network_junctions_rvar(Jvv, mimv, mf_Uvi, mf_Pv, mf_coefv, Jv, area_und);
 		gmm::add(Jvv,
 			gmm::sub_matrix(AM,
 				gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
@@ -1193,7 +1132,7 @@ problemHT::solve_fixpoint(void)
 
 
 		// boundary condition for vessels - only DIR conditions!
-		//sparse_matrix_type Mvv_bcprova(dof.Uv(), dof.Uv());
+
 		vector_type Fv_bc(dof.Uv());
 		scalar_type p0coef = PARAM.real_value("P0"); // default: 0
 		vector_type P0_vel(mf_coefv.nb_dof(), p0coef);
@@ -1224,7 +1163,7 @@ problemHT::solve_fixpoint(void)
 		#endif
 
 		t=clock();
-		U_new=problem3d1d::iteration_solve(U_old,F_new);
+		U_new=problem3d1d::iteration_solve(U_old,F_new); // solve fluid dynamic problem
 		gmm::copy(U_new,UM);
 		// gmm::clear(UM);
 		// problem3d1d::solve_samg();
@@ -1240,9 +1179,7 @@ problemHT::solve_fixpoint(void)
 		assembly();
 
 	
-		H_new=iteration_solve(H_old, FM_HT);                               // HEMATOCRIT SOLVE
-
-		// gmm::copy(H_old, H_new);  // io
+		H_new=iteration_solve(H_old, FM_HT);     // HEMATOCRIT SOLVE
 		
 		//f-compute TFR
 		//g-compute lymphatic total flow rate
@@ -1492,12 +1429,12 @@ scalar_type R, area, per;
 for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 
 	for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv){
-		for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){  // j global index, indcv_loc is the local index in the branch
-			scalar_type deltap = p_ext[j] - p_int[j]; // cout<< "deltap " << deltap << endl;
-			scalar_type ratio = hu[j]/Ru[j];  //cout<< "ratio  " << ratio << endl;
+		for (auto j : mf_coefv.ind_basic_dof_of_element(mrv.cv())){    // j global index, indcv_loc is the local index in the branch
+			scalar_type deltap = p_ext[j] - p_int[j]; 
+			scalar_type ratio = hu[j]/Ru[j];
 			size_type indcv_loc = mf_coefvi[i].ind_basic_dof_of_element(mrv.cv())[0];
 			if ( 1) {//i!= 0){
-			if (ratio >= 0.1){ // arteriola: rimane sezione circolare
+			if (ratio >= 0.1){ // arteriole case: the cross section remains circular
 				cout << " arteriola  "<< endl;
 				scalar_type den = (Ru[j]+hu[j])*(Ru[j]+hu[j]) - Ru[j]*Ru[j];  //cout<< "den " << den << endl;
 				scalar_type B1 = (p_int[j] *Ru[j]*Ru[j] - p_ext[j]*(Ru[j]+hu[j])*(Ru[j]+hu[j]))/den; //cout<< "B1 " << B1 << endl;
@@ -1510,12 +1447,12 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 				cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
 				//cout << U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R)<<endl;
 				}
-			else {   
+			else {  // venule case
 				scalar_type threshold;
 				threshold = 3 *E_ *ratio*ratio*ratio /12.0 /(1-nu*nu);
 				cout << " threshold  " << threshold <<  "   ==== deltap   "<< deltap << endl;
 				scalar_type Rtmp;
-				if(deltap <= threshold){   // allora rimane sezione circolare
+				if(deltap <= threshold){   // venule remains circular
 					Rtmp = Ru[j] *(1 - (1-nu*nu) /ratio /E_ *deltap);
 					cout << " venula circolare  " << endl;
 					R = Rtmp;
@@ -1524,16 +1461,16 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 					cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
 					cout << " cond per venula circolare   " << cond[j] << endl;
 				}
-				else{   // buckling case: negletting curvature
+				else{   // venule: buckling case (negletting curvature)
 					Rtmp = Ru[j]; //*(1 - (1-nu*nu) /ratio /E_ *threshold);
 					cout << " venula collassata  "<<endl;
 					//scalar_type h_new = hu[j] * Ru[j] /Rtmp;
 					//ratio = h_new/Rtmp; // update ratio
-					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio; // p_adim è la pressione equivalente del paper di Tadj
-					//	definisco caso limite il valore di padim per cui la vena è definita collassata-
-					// se sono prima del caso limite, uso u_star e area vere. se sono oltre il caso limite, 
-					//uso area vera solo per calcolare raggio vero, ma poi salvo solo area 
-					// e il cond del caso limite
+					scalar_type p_adim = deltap *P_ *12 *(1-nu*nu) /E /ratio /ratio /ratio; // p_adim èis the equivalent pressure of the paper of Tadj
+					// define limit configuration for the cross section: for p_adim = 5 we define the venule collapsed
+					// before the limit configuration, we use the actual u_star and area.
+					// after the limit configuration, we use the actual area to calculate the hydraulic radius, 
+					// but then we save only the area and u_star of the limit case				
 					area = 15.95 * pow(e, -0.545 * p_adim) * Rtmp *Rtmp;
 					per = 2* pi * Rtmp;
 					R = area /per;  //hydraulic radius
@@ -1547,22 +1484,11 @@ for ( size_type i = 0; i < mf_coefvi.size(); i++ ){  // branches loop
 						area = 15.95 * pow(e, -0.545 * p_adim) * Rtmp *Rtmp;
 						cond[j] = area * area /Rtmp /Rtmp /Rtmp /Rtmp /int_u_starfake;
 					}
-					cout << " p_adim    " << p_adim <<"==============     area = "<< area << " =======    cond per venula collassata " << cond[j] << endl;
+					//cout << " p_adim    " << p_adim <<"==============     area = "<< area << " =======    cond per venula collassata " << cond[j] << endl;
 
 				}
 			}
-			   /*
-			   // warning overidding radius!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			   std::cout <<"x dof " << mf_coefv.point_of_basic_dof(j)[0]<<std::endl;
-				R=0.009;
-			    if (mf_coefv.point_of_basic_dof(j)[0] < 0.25 )
-				R = 0.008;   // adimensionalized
-				area = pi*R*R;
-				per = 2.0*pi*R;
-				//cout << "Ru   " << Ru[j] << " R  "<< R << endl;
-				//cout << " R   " << R << "   "<< U_/P_ /d << "   "<< area *area <<"  "<<2.0*(Gamma_ +2.0) /pi /R /R /R /R << "   "<< param.Curv(i,indcv_loc) << endl;
-				cond[j] = U_ /P_ /d *area *area *2.0*(Gamma_ +2.0) /pi /R /R /R /R * (1.0 + param.Curv(i, indcv_loc)*param.Curv(i, indcv_loc)*R*R);
-				*/
+
 			// update the values
 			param.replace_r ( R, j);
 			param.replace_area (area, j);

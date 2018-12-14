@@ -221,13 +221,13 @@ asm_hematocrit_junctions
 			if (std::find(bb, be, i) != be){
 				J(row, i*mf_h[i].nb_dof()+last_) -= pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+last_) += 2.0*Ri*dim;
-				//cout << " primo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) << endl;
+				//cout << " first if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+last_) << endl;
 			}
 			// Inflow branch contribution
 			if (i!=0 && std::find(bb, be, -i) != be){
 				J(row, i*mf_h[i].nb_dof()+first_) += pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];//col to be generalized!
 				Diameters(row, i*mf_h[i].nb_dof()+first_) += 2.0*Ri*dim;
-				//cout << " secondo if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
+				//cout << " second if  diameters = "<< Diameters(row, i*mf_h[i].nb_dof()+first_) << endl;
 			}
 		}
 	}
@@ -425,7 +425,7 @@ asm_hematocrit_junctions_rvar
 					scalar_type FQE=fractional_Erythrocytes(FQB, D_f, D, D_2, H_f); // given flow fraction, diameters and hematocrit in the father, it gives back QH/Q_fH_f
 					//cout << " entro in erythrocytes?   " << endl;
 					gmm::clear(row_vec);
-					row_vec[position]=Jq[n][position]*FQE; // modifico inflow della jun e metto a zero il resto
+					row_vec[position]=Jq[n][position]*FQE; // modify inflow of the junction and set to zero everything else
 					gmm::copy(row_vec,gmm::mat_row(Jh,k));
 					}
 					else{
@@ -656,11 +656,11 @@ for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
 			size_type first_u=dofu_enum[0];
 			size_type first=dof_enum[0];
 
-		if (U[i*mf_u[i].nb_dof()+last_u]>0) { // se la velocità alla fine del ramo è positiva, ho outflow alla fine
+		if (U[i*mf_u[i].nb_dof()+last_u]>0) {
 			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+last_u];	
 			//cout << " area pi rquadro  "<<pi*Ri*Ri<< "   U"<<U[i*mf_u[i].nb_dof()+last_u]<<"    primo if out   "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
 		}
-		else  {// se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
+		else  {
 			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=pi*Ri*Ri*U[i*mf_u[i].nb_dof()+first_u];
 			//cout << " secondo if out  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
 		}
@@ -712,11 +712,11 @@ for (size_type i=0; i < mf_h.size(); i++) {   // branch loop
 				//cout << " asm out   areai " << areai[fine_a] << endl;
 				fine_a++;}
 
-		if (U[i*mf_u[i].nb_dof()+last_u]>0) {  // se la velocità alla fine del ramo è positiva, ho outflow alla fine
+		if (U[i*mf_u[i].nb_dof()+last_u]>0) { 
 			M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last]+=areai[fine_a-1]*U[i*mf_u[i].nb_dof()+last_u];	
 			//cout << "areai  "<< areai[fine_a-1] << "   U " << U[i*mf_u[i].nb_dof()+last_u] << "    primo if out rvar  "<< M[i*mf_h[i].nb_dof()+last][i*mf_h[i].nb_dof()+last] << endl;
 		}
-		else { // se la velocità alla fine del ramo è negativa, ho outflow all'inizio del ramo
+		else { 
 			M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first]-=areai[0]*U[i*mf_u[i].nb_dof()+first_u];
 			//cout << " secondo if out rvar  "<< M[i*mf_h[i].nb_dof()+first][i*mf_h[i].nb_dof()+first] << endl;
 		}

@@ -69,6 +69,8 @@ viscosity_vivo(scalar_type hematocrit, scalar_type R, scalar_type mu_plasma)
 		cout << "mu_plasma" << mu_plasma << endl;
 		cout << "hematocrit" << hematocrit << endl;*/
 
+		if (D < 6) D=6; // the formula for viscosity gives a infinite value for D -> 1.1 from above. 
+		// thus we set a minimum value that is useful in case of compliant vessels
 		visco_ast_45 = 6*pow(e,-0.085*D)+3.2-2.44*pow(e,-0.06*pow(D,0.645));
 
 		//cout << "viscoast" << visco_ast_45 << endl;
